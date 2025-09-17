@@ -18,5 +18,7 @@ namespace PracticaPedidos4MVC.Models
 
         [Display(Name = "Total del Pedido")]
         public decimal Total { get; set; }
+
+        public UserModel? Cliente { get; set; }
     }
 }
