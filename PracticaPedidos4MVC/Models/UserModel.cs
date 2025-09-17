@@ -2,7 +2,7 @@
 
 namespace PracticaPedidos4MVC.Models
 {
-    public class User
+    public class UserModel
     {
         [Display(Name = "Identificador Cliente")]
         public int Id { get; set; }
