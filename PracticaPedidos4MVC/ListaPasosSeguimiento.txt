@@ -1,0 +1,41 @@
+--- BASES INICIALES ---
+1) Crear proyecto MVC
+2) Configurar base de datos -> Crear DB inicial (SQL Server) y conexión en appsettings.json
+3) Configurar Entity Framework -> Agregar EF Core y scaffolding inicial
+4) Modificar layout
+
+--- MODELOS ---
+5) Crear modelo User -> Definir entidad con nombre, email, password, rol
+6) Crear modelo Product -> Nombre, descripción, precio, stock
+7) Crear modelo Order -> Cliente, fecha, estado, total
+8) Crear modelo OrderItem -> Producto, cantidad, subtotal
+9) Relacionar Order y User -> ForeignKey Cliente
+10) Relacionar OrderItem y Product -> ForeignKey Producto
+11) Validar modelos con DataAnnotations -> Required, Range, StringLength
+12) Validaciones de producto -> Precios positivos, stock ≥0
+
+--- PROGRAMAR ---
+13) Configurar controladores base -> Crear controlador HomeController y vista Index
+14) Crear controlador UsersController -> Implementar CRUD básico
+15) Crear vistas de usuario -> Index, Create, Edit, Details, Delete
+16) Crear controlador ProductsController -> CRUD productos
+17) Crear vistas de producto -> Listado, formulario creación y edición
+18) Filtrado y búsqueda -> Por nombre, categoría, rango de precio
+19) Crear controlador OrdersController -> CRUD pedidos
+20) Crear vistas de pedido -> Listado, detalle, creación rápida
+21) Crear vistas de detalles de pedido -> Mostrar productos y cantidades por pedido
+
+--- LOGICA ---
+22) Validar stock -> No permitir pedido si stock insuficiente
+23) Ajustar stock al crear pedido -> Reducir stock automáticamente
+24) Calcular totales automáticamente -> Suma de subtotales de items
+25) Cambiar estado de pedido -> Pendiente, procesado, enviado, entregado
+
+--- SEGURIDAD ---
+26) Implementar autenticación -> Login / Logout con Identity o manual
+27) Implementar autorización -> Roles: admin / cliente / empleado
+28) Evitar acceso no autorizado -> Decoradores [Authorize] en controladores
+
+--- VALIDACIONES FUERTES ---
+29) Manejar errores en controlador -> Try/catch y mensajes amigables
+30) Sanitizar entradas de usuario -> Evitar inyección de código o SQL
