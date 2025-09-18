@@ -11,21 +11,24 @@
 8) Crear modelo OrderItem -> Producto, cantidad, subtotal
 9) Relacionar Order y User -> ForeignKey Cliente
 10) Relacionar OrderItem y Product -> ForeignKey Producto
+EXTRA) Agregar relación OrderItem-Order (FK IdPedido, borrado en cascada)
+
+--- VALIDACIÓN TÉCNICA ---
 11) Validar modelos con DataAnnotations -> Required, Range, StringLength
-12) Validaciones de producto -> Precios positivos, stock ≥0
 
 --- PROGRAMAR ---
-13) Configurar controladores base -> Crear controlador HomeController y vista Index
-14) Crear controlador UsersController -> Implementar CRUD básico
-15) Crear vistas de usuario -> Index, Create, Edit, Details, Delete
-16) Crear controlador ProductsController -> CRUD productos
-17) Crear vistas de producto -> Listado, formulario creación y edición
-18) Filtrado y búsqueda -> Por nombre, categoría, rango de precio
-19) Crear controlador OrdersController -> CRUD pedidos
-20) Crear vistas de pedido -> Listado, detalle, creación rápida
-21) Crear vistas de detalles de pedido -> Mostrar productos y cantidades por pedido
+12) Configurar controladores base -> Crear controlador HomeController y vista Index
+13) Crear controlador UsersController -> Implementar CRUD básico
+14) Crear vistas de usuario -> Index, Create, Edit, Details, Delete
+15) Crear controlador ProductsController -> CRUD productos
+16) Crear vistas de producto -> Listado, formulario creación y edición
+17) Filtrado y búsqueda -> Por nombre, categoría, rango de precio
+18) Crear controlador OrdersController -> CRUD pedidos
+19) Crear vistas de pedido -> Listado, detalle, creación rápida
+20) Crear vistas de detalles de pedido -> Mostrar productos y cantidades por pedido
 
---- LOGICA ---
+--- LÓGICA ---
+21) Validaciones de producto -> Precios positivos, stock ≥0
 22) Validar stock -> No permitir pedido si stock insuficiente
 23) Ajustar stock al crear pedido -> Reducir stock automáticamente
 24) Calcular totales automáticamente -> Suma de subtotales de items
