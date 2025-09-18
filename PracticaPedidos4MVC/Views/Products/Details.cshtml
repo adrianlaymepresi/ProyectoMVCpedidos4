@@ -1,42 +1,49 @@
 ﻿@model PracticaPedidos4MVC.Models.ProductModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles del Producto";
 }
 
-<h1>Details</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">DETALLES DEL PRODUCTO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<div>
-    <h4>ProductModel</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Nombre)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Nombre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Descripcion)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Descripcion)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Precio)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Precio)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Stock)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Stock)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+    <div class="card p-3 card-tabla">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Nombre)</div>
+                    <div class="fw-medium text-white">@Model.Nombre</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Precio)</div>
+                    <div class="fw-medium text-white">@string.Format("{0:0.00}", Model.Precio)</div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Descripcion)</div>
+                    <div class="fw-medium text-white">@Model.Descripcion</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Stock)</div>
+                    <div class="fw-medium text-white">@Model.Stock</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mt-4">
+            <a class="btn btn-outline-secondary" asp-action="Index">Volver</a>
+            <a class="btn btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+        </div>
+    </div>
 </div>

@@ -1,49 +1,145 @@
 ﻿@model PracticaPedidos4MVC.Models.ProductModel
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Editar Producto";
 }
 
-<h1>Edit</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">EDITAR PRODUCTO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<h4>ProductModel</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="card p-3 card-tabla">
+        <form asp-action="Edit" method="post" class="row g-3 w-100" novalidate>
             <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <label asp-for="Nombre" class="control-label"></label>
-                <input asp-for="Nombre" class="form-control" />
+
+            <div class="col-12">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Nombre" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Nombre)
+                    <span id="contador_nombre" class="badge rounded-pill bg-secondary ms-2">120 restantes</span>
+                </label>
+                <textarea asp-for="Nombre"
+                          class="form-control"
+                          maxlength="120"
+                          rows="1"
+                          required
+                          minlength="4"
+                          style="overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; resize:none;"
+                          placeholder="Nombre del producto"></textarea>
                 <span asp-validation-for="Nombre" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Descripcion" class="control-label"></label>
-                <input asp-for="Descripcion" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Descripcion" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Descripcion)
+                    <span id="contador_descripcion" class="badge rounded-pill bg-secondary ms-2">1000 restantes</span>
+                </label>
+                <textarea asp-for="Descripcion"
+                          class="form-control"
+                          maxlength="1000"
+                          rows="2"
+                          style="overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; resize:none;"
+                          placeholder="Descripción"></textarea>
                 <span asp-validation-for="Descripcion" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Precio" class="control-label"></label>
-                <input asp-for="Precio" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Precio" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Precio)
+                    <span id="contador_precio" class="badge rounded-pill bg-secondary ms-2">hasta 999999.99</span>
+                </label>
+                <input asp-for="Precio"
+                       class="form-control"
+                       type="number"
+                       step="0.01"
+                       min="0.01"
+                       max="999999.99"
+                       required
+                       inputmode="decimal" />
                 <span asp-validation-for="Precio" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Stock" class="control-label"></label>
-                <input asp-for="Stock" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Stock" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Stock)
+                    <span id="contador_stock" class="badge rounded-pill bg-secondary ms-2">6 restantes</span>
+                </label>
+                <input asp-for="Stock"
+                       class="form-control"
+                       type="text"
+                       inputmode="numeric"
+                       pattern="\d*"
+                       maxlength="6"
+                       required
+                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,6); actualizarStockContador();" />
                 <span asp-validation-for="Stock" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
+
+            <div class="col-12 d-flex justify-content-center gap-2 mt-2">
+                <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+                <button type="submit" class="btn btn-success">💾 Guardar cambios</button>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (() => {
+            const nombre = document.getElementById('Nombre');
+            const descripcion = document.getElementById('Descripcion');
+            const precio = document.getElementById('Precio');
+            const stock = document.getElementById('Stock');
+
+            const bNombre = document.getElementById('contador_nombre');
+            const bDescripcion = document.getElementById('contador_descripcion');
+            const bPrecio = document.getElementById('contador_precio');
+            const bStock = document.getElementById('contador_stock');
+
+            const bindLeft = (el, badge, max) => {
+                if (!el || !badge) return;
+                const up = () => { badge.textContent = (max - (el.value || '').length) + ' restantes'; };
+                el.addEventListener('input', up); up();
+            };
+
+            const autoHeight = (ta) => {
+                if (!ta) return;
+                const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+                ta.addEventListener('input', grow); grow();
+            };
+
+            window.actualizarStockContador = function () {
+                if (!stock || !bStock) return;
+                bStock.textContent = (6 - (stock.value || '').length) + ' restantes';
+            };
+
+            const actualizarPrecio = () => {
+                if (!precio || !bPrecio) return;
+                const s = (precio.value || '').toString();
+                const restantes = Math.max(0, 9 - s.length);
+                bPrecio.textContent = restantes + ' restantes (formato máx 999999.99)';
+            };
+
+            bindLeft(nombre, bNombre, 120);
+            bindLeft(descripcion, bDescripcion, 1000);
+            autoHeight(nombre);
+            autoHeight(descripcion);
+
+            actualizarStockContador();
+            if (stock) stock.addEventListener('input', actualizarStockContador);
+
+            actualizarPrecio();
+            if (precio) precio.addEventListener('input', actualizarPrecio);
+        })();
+    </script>
 }
