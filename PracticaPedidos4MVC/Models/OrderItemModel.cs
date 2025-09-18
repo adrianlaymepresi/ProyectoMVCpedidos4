@@ -7,6 +7,9 @@ namespace PracticaPedidos4MVC.Models
         [Display(Name = "Identificador Ítem de Pedido")]
         public int Id { get; set; }
 
+        [Display(Name = "Pedido")]
+        public int IdPedido { get; set; }
+
         [Display(Name = "Producto")]
         public int IdProducto { get; set; }
 
@@ -16,6 +19,7 @@ namespace PracticaPedidos4MVC.Models
         [Display(Name = "Subtotal")]
         public decimal Subtotal { get; set; }
 
+        public OrderModel? Pedido { get; set; }
         public ProductModel? Producto { get; set; }
     }
 }

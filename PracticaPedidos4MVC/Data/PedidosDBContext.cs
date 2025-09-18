@@ -28,6 +28,12 @@ namespace PracticaPedidos4MVC.Data
                 .WithMany()
                 .HasForeignKey(oi => oi.IdProducto)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrderItemModel>()
+                .HasOne(oi => oi.Pedido)
+                .WithMany(o => o.Items)
+                .HasForeignKey(oi => oi.IdPedido)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -20,5 +20,6 @@ namespace PracticaPedidos4MVC.Models
         public decimal Total { get; set; }
 
         public UserModel? Cliente { get; set; }
+        public ICollection<OrderItemModel>? Items { get; set; }
     }
 }
