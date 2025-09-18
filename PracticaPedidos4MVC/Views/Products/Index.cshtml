@@ -10,7 +10,11 @@
     int winEnd = ViewBag.PageWindowEnd ?? totalPag;
     bool hasPrev = ViewBag.HasPrevPage ?? false;
     bool hasNext = ViewBag.HasNextPage ?? false;
+
     string q = ViewBag.TextoBusqueda as string ?? "";
+    string modo = ViewBag.Modo as string ?? "nombre";
+    decimal? minPrecio = ViewBag.MinPrecio as decimal?;
+    decimal? maxPrecio = ViewBag.MaxPrecio as decimal?;
 }
 
 <div class="container-fluid">
@@ -31,15 +35,31 @@
                    oninput="this.value = this.value.replace(/\D/g,'').slice(0,2)"
                    style="width:70px" />
             <input type="hidden" name="pagina" value="1" />
+            <input type="hidden" name="modo" value="@modo" />
             <input type="hidden" name="q" value="@q" />
+            <input type="hidden" name="minPrecio" value="@(minPrecio?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" />
+            <input type="hidden" name="maxPrecio" value="@(maxPrecio?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" />
             <button type="submit" class="btn btn-sm btn-primary text-nowrap">👁️ Aplicar</button>
             <a class="btn btn-sm btn-success text-nowrap" asp-action="Create">➕ Nuevo</a>
         </form>
     </div>
 
     <div class="d-flex justify-content-start align-items-center mb-3">
-        <form id="formulario-busqueda" method="get" class="d-flex align-items-center gap-2">
-            <label for="q" class="text-light m-0 text-nowrap">Buscar</label>
+        <form id="formulario-filtro" method="get" class="d-flex flex-wrap align-items-center gap-2">
+            <label for="modo" class="text-light m-0 text-nowrap">Filtrar por</label>
+            @{
+                var modosList = new List<SelectListItem>
+                        {
+                        new SelectListItem { Value = "nombre", Text = "Nombre/Descripción", Selected = (modo == "nombre") },
+                        new SelectListItem { Value = "categoria", Text = "Categoría", Selected = (modo == "categoria") },
+                        new SelectListItem { Value = "precio", Text = "Rango de precio", Selected = (modo == "precio") }
+                        };
+            }
+
+            <select id="modo" name="modo" class="form-select form-select-sm" style="width: 170px;"
+                    asp-items="@modosList"></select>
+
+            <!-- Campo de texto (nombre/categoría) -->
             <input id="q"
                    name="q"
                    class="form-control form-control-sm"
@@ -49,6 +69,20 @@
                    autocomplete="off"
                    style="width: 250px;"
                    maxlength="100" />
+
+            <!-- Rango de precio (se muestra sólo en modo=precio) -->
+            <div id="grupo-precio" class="d-flex align-items-center gap-2" style="display:none;">
+                <input id="minPrecio" name="minPrecio" class="form-control form-control-sm"
+                       type="number" step="0.01" min="0.01" max="999999.99"
+                       value="@(minPrecio?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))"
+                       placeholder="mín" style="width:110px;" />
+                <span class="text-light">–</span>
+                <input id="maxPrecio" name="maxPrecio" class="form-control form-control-sm"
+                       type="number" step="0.01" min="0.01" max="999999.99"
+                       value="@(maxPrecio?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))"
+                       placeholder="máx" style="width:110px;" />
+            </div>
+
             <input type="hidden" name="cantidadRegistrosPorPagina" value="@cant" />
             <input type="hidden" name="pagina" value="1" />
         </form>
@@ -61,7 +95,10 @@
                    asp-action="Index"
                    asp-route-pagina="@(pagina - 1)"
                    asp-route-cantidadRegistrosPorPagina="@cant"
-                   asp-route-q="@q">« Anterior</a>
+                   asp-route-modo="@modo"
+                   asp-route-q="@q"
+                   asp-route-minPrecio="@(minPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                   asp-route-maxPrecio="@(maxPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))">« Anterior</a>
             </li>
 
             <li class="page-item @(pagina == 1 ? "active" : "")">
@@ -69,7 +106,10 @@
                    asp-action="Index"
                    asp-route-pagina="1"
                    asp-route-cantidadRegistrosPorPagina="@cant"
-                   asp-route-q="@q">1</a>
+                   asp-route-modo="@modo"
+                   asp-route-q="@q"
+                   asp-route-minPrecio="@(minPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                   asp-route-maxPrecio="@(maxPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))">1</a>
             </li>
 
             @if (winStart > 1)
@@ -85,7 +125,10 @@
                        asp-action="Index"
                        asp-route-pagina="@i"
                        asp-route-cantidadRegistrosPorPagina="@cant"
-                       asp-route-q="@q">@i</a>
+                       asp-route-modo="@modo"
+                       asp-route-q="@q"
+                       asp-route-minPrecio="@(minPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                       asp-route-maxPrecio="@(maxPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))">@i</a>
                 </li>
             }
 
@@ -99,7 +142,10 @@
                    asp-action="Index"
                    asp-route-pagina="@(pagina + 1)"
                    asp-route-cantidadRegistrosPorPagina="@cant"
-                   asp-route-q="@q">Siguiente »</a>
+                   asp-route-modo="@modo"
+                   asp-route-q="@q"
+                   asp-route-minPrecio="@(minPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))"
+                   asp-route-maxPrecio="@(maxPrecio?.ToString(System.Globalization.CultureInfo.InvariantCulture))">Siguiente »</a>
             </li>
         </ul>
     </nav>
@@ -110,6 +156,7 @@
                 <thead>
                     <tr>
                         <th class="text-white">@Html.DisplayNameFor(m => m.First().Nombre)</th>
+                        <th class="text-white">@Html.DisplayNameFor(m => m.First().Categoria)</th>
                         <th class="text-white">@Html.DisplayNameFor(m => m.First().Descripcion)</th>
                         <th class="text-white">@Html.DisplayNameFor(m => m.First().Precio)</th>
                         <th class="text-white">@Html.DisplayNameFor(m => m.First().Stock)</th>
@@ -123,6 +170,7 @@
                         {
                             <tr>
                                 <td class="text-white">@item.Nombre</td>
+                                <td class="text-white">@item.Categoria</td>
                                 <td class="text-white">@item.Descripcion</td>
                                 <td class="text-white">@string.Format("{0:0.00}", item.Precio)</td>
                                 <td class="text-white">@item.Stock</td>
@@ -136,7 +184,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="5" class="text-center text-white py-4">Sin resultados.</td></tr>
+                        <tr><td colspan="6" class="text-center text-white py-4">Sin resultados.</td></tr>
                     }
                 </tbody>
             </table>
@@ -147,26 +195,76 @@
 @section Scripts {
     <script>
         (() => {
-            const formularioBusqueda = document.getElementById('formulario-busqueda');
-            const campoBusqueda = document.getElementById('q');
-            let temporizadorEspera;
-            const esperaMilisegundos = 600;
+            const form = document.getElementById('formulario-filtro');
+            const selModo = document.getElementById('modo');
+            const inputQ = document.getElementById('q');
+            const grupoPrecio = document.getElementById('grupo-precio');
+            const minP = document.getElementById('minPrecio');
+            const maxP = document.getElementById('maxPrecio');
 
-            if (campoBusqueda) {
-                campoBusqueda.focus();
-                const valor = campoBusqueda.value;
-                campoBusqueda.value = '';
-                campoBusqueda.value = valor;
+            function actualizarUI() {
+                const modo = selModo.value;
+                if (modo === 'precio') {
+                    grupoPrecio.style.display = 'flex';
+                    inputQ.style.display = 'none';
+                    inputQ.value = '';
+                } else {
+                    grupoPrecio.style.display = 'none';
+                    minP.value = minP.value;
+                    maxP.value = maxP.value;
+                    inputQ.style.display = 'block';
+                }
             }
 
-            if (formularioBusqueda && campoBusqueda) {
-                campoBusqueda.addEventListener('input', () => {
-                    clearTimeout(temporizadorEspera);
-                    temporizadorEspera = setTimeout(() => {
-                        formularioBusqueda.querySelector('input[name="pagina"]').value = "1";
-                        formularioBusqueda.submit();
-                    }, esperaMilisegundos);
-                });
+            // Inicializa UI
+            actualizarUI();
+
+            // Cambiar UI al cambiar modo
+            selModo.addEventListener('change', () => {
+                // Reinicia a página 1
+                form.querySelector('input[name="pagina"]').value = "1";
+                actualizarUI();
+                form.submit();
+            });
+
+            // Búsqueda con debounce cuando es texto
+            let t;
+            inputQ?.addEventListener('input', () => {
+                if (selModo.value !== 'precio') {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        form.querySelector('input[name="pagina"]').value = "1";
+                        form.submit();
+                    }, 600);
+                }
+            });
+
+            // En modo precio, al cambiar min/max, enviamos
+            minP?.addEventListener('input', () => {
+                if (selModo.value === 'precio') {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        form.querySelector('input[name="pagina"]').value = "1";
+                        form.submit();
+                    }, 600);
+                }
+            });
+            maxP?.addEventListener('input', () => {
+                if (selModo.value === 'precio') {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        form.querySelector('input[name="pagina"]').value = "1";
+                        form.submit();
+                    }, 600);
+                }
+            });
+
+            // Focus
+            if (selModo.value === 'precio') {
+                minP?.focus();
+            } else {
+                inputQ?.focus();
+                const v = inputQ.value; inputQ.value = ''; inputQ.value = v;
             }
         })();
     </script>

@@ -21,13 +21,23 @@ namespace PracticaPedidos4MVC.Controllers
         }
 
         // =========================
-        //  LISTADO con búsqueda + paginación
+        //  LISTADO con búsqueda + paginación + filtro (nombre/categoría/precio)
         // =========================
         // GET: Products
-        public async Task<IActionResult> Index(int pagina = 1, int cantidadRegistrosPorPagina = 5, string q = "")
+        public async Task<IActionResult> Index(
+            int pagina = 1,
+            int cantidadRegistrosPorPagina = 5,
+            string q = "",
+            string modo = "nombre",          // "nombre" | "categoria" | "precio"
+            decimal? minPrecio = null,
+            decimal? maxPrecio = null)
         {
             try
             {
+                // Normalización parámetros
+                modo = (modo ?? "nombre").Trim().ToLowerInvariant();
+                if (modo != "nombre" && modo != "categoria" && modo != "precio") modo = "nombre";
+
                 if (cantidadRegistrosPorPagina < 1) cantidadRegistrosPorPagina = 5;
                 if (cantidadRegistrosPorPagina > 99) cantidadRegistrosPorPagina = 99;
                 if (pagina < 1) pagina = 1;
@@ -36,39 +46,119 @@ namespace PracticaPedidos4MVC.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
+                // VALIDACIONES de rango de precio cuando corresponde
+                bool rangoValido = true;
+                if (modo == "precio")
+                {
+                    if (minPrecio is null || maxPrecio is null)
+                    {
+                        rangoValido = false;
+                        ModelState.AddModelError(string.Empty, "Debes ingresar ambos valores de precio (mínimo y máximo).");
+                    }
+                    else
+                    {
+                        if (minPrecio < 0.01m || minPrecio > 999_999.99m ||
+                            maxPrecio < 0.01m || maxPrecio > 999_999.99m)
+                        {
+                            rangoValido = false;
+                            ModelState.AddModelError(string.Empty, "Los precios deben estar entre 0.01 y 999,999.99.");
+                        }
+                        if (rangoValido && minPrecio > maxPrecio)
+                        {
+                            rangoValido = false;
+                            ModelState.AddModelError(string.Empty, "El precio mínimo no puede ser mayor que el máximo.");
+                        }
+                    }
+                }
+
                 var termino = (q ?? "").Trim();
                 var terminoNorm = NormalizarTexto(termino);
 
                 IEnumerable<ProductModel> fuente;
-                if (terminoNorm.Length == 0)
-                {
-                    fuente = todos
-                        .OrderBy(p => p.Nombre)
-                        .ThenBy(p => p.Id);
-                }
-                else
-                {
-                    // Buscar por Nombre y Descripcion (normalizados)
-                    var query = todos
-                        .Select(p => new
-                        {
-                            P = p,
-                            NomNorm = NormalizarTexto(p.Nombre ?? ""),
-                            DescNorm = NormalizarTexto(p.Descripcion ?? "")
-                        })
-                        .Where(x => x.NomNorm.Contains(terminoNorm) || x.DescNorm.Contains(terminoNorm))
-                        .Select(x => new
-                        {
-                            x.P,
-                            RelNom = CalcularRelevancia(x.NomNorm, terminoNorm),
-                            RelDesc = CalcularRelevancia(x.DescNorm, terminoNorm)
-                        })
-                        .OrderBy(x => x.RelNom.empieza)
-                        .ThenBy(x => x.RelNom.indice)
-                        .ThenBy(x => x.RelNom.diferenciaLongitud)
-                        .ThenBy(x => x.P.Id);
 
-                    fuente = query.Select(x => x.P);
+                if (modo == "nombre")
+                {
+                    if (terminoNorm.Length == 0)
+                    {
+                        fuente = todos
+                            .OrderBy(p => p.Nombre)
+                            .ThenBy(p => p.Id);
+                    }
+                    else
+                    {
+                        var query = todos
+                            .Select(p => new
+                            {
+                                P = p,
+                                NomNorm = NormalizarTexto(p.Nombre ?? ""),
+                                DescNorm = NormalizarTexto(p.Descripcion ?? "")
+                            })
+                            .Where(x => x.NomNorm.Contains(terminoNorm) || x.DescNorm.Contains(terminoNorm))
+                            .Select(x => new
+                            {
+                                x.P,
+                                RelNom = CalcularRelevancia(x.NomNorm, terminoNorm),
+                                RelDesc = CalcularRelevancia(x.DescNorm, terminoNorm)
+                            })
+                            .OrderBy(x => x.RelNom.empieza)
+                            .ThenBy(x => x.RelNom.indice)
+                            .ThenBy(x => x.RelNom.diferenciaLongitud)
+                            .ThenBy(x => x.P.Id);
+
+                        fuente = query.Select(x => x.P);
+                    }
+                }
+                else if (modo == "categoria")
+                {
+                    if (terminoNorm.Length == 0)
+                    {
+                        // Si no hay término, solo ordenamos por categoría/nombre
+                        fuente = todos
+                            .OrderBy(p => p.Categoria)
+                            .ThenBy(p => p.Nombre)
+                            .ThenBy(p => p.Id);
+                    }
+                    else
+                    {
+                        var query = todos
+                            .Select(p => new
+                            {
+                                P = p,
+                                CatNorm = NormalizarTexto(p.Categoria ?? "")
+                            })
+                            .Where(x => x.CatNorm.Contains(terminoNorm))
+                            .Select(x => new
+                            {
+                                x.P,
+                                Rel = CalcularRelevancia(x.CatNorm, terminoNorm)
+                            })
+                            .OrderBy(x => x.Rel.empieza)
+                            .ThenBy(x => x.Rel.indice)
+                            .ThenBy(x => x.Rel.diferenciaLongitud)
+                            .ThenBy(x => x.P.Id);
+
+                        fuente = query.Select(x => x.P);
+                    }
+                }
+                else // modo == "precio"
+                {
+                    if (!rangoValido)
+                    {
+                        // Si el rango no es válido, mostramos todo ordenado por precio y dejamos los errores en ModelState
+                        fuente = todos.OrderBy(p => p.Precio).ThenBy(p => p.Id);
+                    }
+                    else
+                    {
+                        // Rango válido => filtramos
+                        var min = minPrecio!.Value;
+                        var max = maxPrecio!.Value;
+
+                        fuente = todos
+                            .Where(p => p.Precio >= min && p.Precio <= max)
+                            .OrderBy(p => p.Precio)
+                            .ThenBy(p => p.Nombre)
+                            .ThenBy(p => p.Id);
+                    }
                 }
 
                 var totalRegistros = fuente.Count();
@@ -87,9 +177,14 @@ namespace PracticaPedidos4MVC.Controllers
                     .Take(cantidadRegistrosPorPagina)
                     .ToList();
 
+                // ViewBags para la vista
                 ViewBag.PaginaActual = pagina;
                 ViewBag.CantidadRegistrosPorPagina = cantidadRegistrosPorPagina;
                 ViewBag.TextoBusqueda = termino;
+                ViewBag.Modo = modo;
+                ViewBag.MinPrecio = minPrecio;
+                ViewBag.MaxPrecio = maxPrecio;
+
                 ViewBag.CantidadTotalPaginas = cantidadTotalPaginas;
                 ViewBag.PageWindowStart = pageWindowStart;
                 ViewBag.PageWindowEnd = pageWindowEnd;
@@ -104,6 +199,9 @@ namespace PracticaPedidos4MVC.Controllers
                 ViewBag.PaginaActual = 1;
                 ViewBag.CantidadRegistrosPorPagina = 5;
                 ViewBag.TextoBusqueda = "";
+                ViewBag.Modo = "nombre";
+                ViewBag.MinPrecio = null;
+                ViewBag.MaxPrecio = null;
                 ViewBag.CantidadTotalPaginas = 1;
                 ViewBag.PageWindowStart = 1;
                 ViewBag.PageWindowEnd = 1;
@@ -136,11 +234,11 @@ namespace PracticaPedidos4MVC.Controllers
         // POST: Products/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Nombre,Descripcion,Precio,Stock")] ProductModel productModel)
+        public async Task<IActionResult> Create([Bind("Id,Nombre,Descripcion,Categoria,Precio,Stock")] ProductModel productModel)
         {
-            // Validaciones servidor
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
+            ValidarCategoria(productModel);
             ValidarPrecio(productModel);
             ValidarStock(productModel);
             await ValidarNombreUnicoAsync(productModel);
@@ -180,13 +278,13 @@ namespace PracticaPedidos4MVC.Controllers
         // POST: Products/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Descripcion,Precio,Stock")] ProductModel productModel)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Descripcion,Categoria,Precio,Stock")] ProductModel productModel)
         {
             if (id != productModel.Id) return NotFound();
 
-            // Validaciones servidor
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
+            ValidarCategoria(productModel);
             ValidarPrecio(productModel);
             ValidarStock(productModel);
             await ValidarNombreUnicoAsync(productModel, excluirId: id);
@@ -279,6 +377,16 @@ namespace PracticaPedidos4MVC.Controllers
             p.Descripcion = desc;
         }
 
+        private void ValidarCategoria(ProductModel p)
+        {
+            var cat = (p.Categoria ?? "").Trim();
+            if (cat.Length > 0 && cat.Length < 3)
+                ModelState.AddModelError(nameof(ProductModel.Categoria), "Si escribes categoría, debe tener al menos 3 caracteres.");
+            else if (cat.Length > 60)
+                ModelState.AddModelError(nameof(ProductModel.Categoria), "Máximo 60 caracteres.");
+            p.Categoria = string.IsNullOrWhiteSpace(cat) ? null : cat;
+        }
+
         private void ValidarPrecio(ProductModel p)
         {
             var precio = p.Precio;
@@ -289,7 +397,6 @@ namespace PracticaPedidos4MVC.Controllers
                 return;
             }
 
-            // Validar hasta 2 decimales
             int decimales = (decimal.GetBits(precio)[3] >> 16) & 0x7F;
             if (decimales > 2)
                 ModelState.AddModelError(nameof(ProductModel.Precio), "Máximo 2 decimales.");

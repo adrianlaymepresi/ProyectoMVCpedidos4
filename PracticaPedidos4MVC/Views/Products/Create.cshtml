@@ -35,6 +35,18 @@
             </div>
 
             <div class="col-12">
+                <label asp-for="Categoria" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Categoria)
+                    <span id="contador_categoria" class="badge rounded-pill bg-secondary ms-2">60 restantes</span>
+                </label>
+                <input asp-for="Categoria"
+                       class="form-control"
+                       maxlength="60"
+                       placeholder="ej: Cocina, Hogar, Electrónica (opcional)" />
+                <span asp-validation-for="Categoria" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
                 <label asp-for="Descripcion" class="form-label m-0">
                     @Html.DisplayNameFor(m => m.Descripcion)
                     <span id="contador_descripcion" class="badge rounded-pill bg-secondary ms-2">1000 restantes</span>
@@ -95,11 +107,13 @@
     <script>
         (() => {
             const nombre = document.getElementById('Nombre');
+            const categoria = document.getElementById('Categoria');
             const descripcion = document.getElementById('Descripcion');
             const precio = document.getElementById('Precio');
             const stock = document.getElementById('Stock');
 
             const bNombre = document.getElementById('contador_nombre');
+            const bCategoria = document.getElementById('contador_categoria');
             const bDescripcion = document.getElementById('contador_descripcion');
             const bPrecio = document.getElementById('contador_precio');
             const bStock = document.getElementById('contador_stock');
@@ -129,6 +143,7 @@
             };
 
             bindLeft(nombre, bNombre, 120);
+            bindLeft(categoria, bCategoria, 60);
             bindLeft(descripcion, bDescripcion, 1000);
             autoHeight(nombre);
             autoHeight(descripcion);

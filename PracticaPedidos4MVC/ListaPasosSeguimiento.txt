@@ -25,7 +25,7 @@ EXTRA) Agregar precisión decimales + Codigo Program + Migración inicial
 14) Crear vistas de usuario -> Index, Create, Edit, Details, Delete + Validaciones tentativas en UsersController (MX DNS, duplicados, trims) [NuGet: DnsClient]
 15) Crear controlador ProductsController -> CRUD productos
 16) Crear vistas de producto -> Listado, creación y edición + Validaciones tentativas en ProductsController
-17) Filtrado y búsqueda -> Por nombre, categoría, rango de precio
+17) Filtrado y búsqueda -> Por nombre, categoría, rango de precio + actualizacion modelo Producto
 18) Crear controlador OrdersController -> CRUD pedidos
 19) Crear vistas de pedido -> Listado, detalle, creación rápida
 20) Crear vistas de detalles de pedido -> Mostrar productos y cantidades por pedido

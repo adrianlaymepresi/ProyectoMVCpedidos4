@@ -23,14 +23,20 @@
             </div>
             <div class="col-12 col-md-6">
                 <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
-                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Precio)</div>
-                    <div class="fw-medium text-white">@string.Format("{0:0.00}", Model.Precio)</div>
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Categoria)</div>
+                    <div class="fw-medium text-white">@Model.Categoria</div>
                 </div>
             </div>
             <div class="col-12">
                 <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
                     <div class="text-secondary small">@Html.DisplayNameFor(m => m.Descripcion)</div>
                     <div class="fw-medium text-white">@Model.Descripcion</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Precio)</div>
+                    <div class="fw-medium text-white">@string.Format("{0:0.00}", Model.Precio)</div>
                 </div>
             </div>
             <div class="col-12 col-md-6">
