@@ -15,5 +15,7 @@ namespace PracticaPedidos4MVC.Models
 
         [Display(Name = "Subtotal")]
         public decimal Subtotal { get; set; }
+
+        public ProductModel? Producto { get; set; }
     }
 }
