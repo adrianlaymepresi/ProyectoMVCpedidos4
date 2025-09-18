@@ -16,6 +16,9 @@ EXTRA) Agregar relación OrderItem-Order (FK IdPedido, borrado en cascada)
 --- VALIDACIÓN TÉCNICA ---
 11) Validar modelos con DataAnnotations -> Required, Range, StringLength
 
+--- MIGRACION IMPORTANTE ---
+EXTRA) Agregar precisión decimales + Codigo Program + Migración inicial
+
 --- PROGRAMAR ---
 12) Configurar controladores base -> Crear controlador HomeController y vista Index
 13) Crear controlador UsersController -> Implementar CRUD básico

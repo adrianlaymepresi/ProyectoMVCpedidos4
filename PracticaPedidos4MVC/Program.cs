@@ -1,7 +1,15 @@
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+//===========================================================//
+// AÑADIMOS LA CREDENCIAL PARA QUE USE NUESTRO CONTEXTO
+builder.Services.AddDbContext<PracticaPedidos4MVC.Data.PedidosDBContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+//===========================================================//
 
 var app = builder.Build();
 

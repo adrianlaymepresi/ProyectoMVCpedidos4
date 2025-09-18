@@ -34,6 +34,19 @@ namespace PracticaPedidos4MVC.Data
                 .WithMany(o => o.Items)
                 .HasForeignKey(oi => oi.IdPedido)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProductModel>()
+                .Property(p => p.Precio)
+                .HasColumnType("decimal(8,2)");
+
+            modelBuilder.Entity<OrderItemModel>()
+                .Property(oi => oi.Subtotal)
+                .HasColumnType("decimal(9,2)");
+
+            modelBuilder.Entity<OrderModel>()
+                .Property(o => o.Total)
+                .HasColumnType("decimal(9,2)");
+
         }
     }
 }
