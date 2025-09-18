@@ -22,7 +22,7 @@ EXTRA) Agregar precisión decimales + Codigo Program + Migración inicial
 --- PROGRAMAR ---
 12) Configurar controladores base -> HomeController y vista Index + interfaz de login (maqueta)
 13) Crear controlador UsersController -> Implementar CRUD básico
-14) Crear vistas de usuario -> Index, Create, Edit, Details, Delete + Validaciones Tentativas en Controller
+14) Crear vistas de usuario -> Index, Create, Edit, Details, Delete + Validaciones tentativas en UsersController (MX DNS, duplicados, trims) [NuGet: DnsClient]
 15) Crear controlador ProductsController -> CRUD productos
 16) Crear vistas de producto -> Listado, formulario creación y edición
 17) Filtrado y búsqueda -> Por nombre, categoría, rango de precio
