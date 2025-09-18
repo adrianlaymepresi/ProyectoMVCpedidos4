@@ -1,48 +1,133 @@
 ﻿@model PracticaPedidos4MVC.Models.UserModel
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Crear Usuario";
 }
 
-<h1>Create</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">CREAR NUEVO USUARIO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<h4>UserModel</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Nombre" class="control-label"></label>
-                <input asp-for="Nombre" class="form-control" />
+    <div class="card p-3 card-tabla">
+        <form asp-action="Create" method="post" class="row g-3 w-100" novalidate>
+            <div class="col-12">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Nombre" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Nombre)
+                    <span id="contador_nombre" class="badge rounded-pill bg-secondary ms-2">120 restantes</span>
+                </label>
+                <textarea asp-for="Nombre"
+                          class="form-control"
+                          maxlength="120"
+                          rows="1"
+                          required
+                          minlength="5"
+                          style="overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; resize:none;"
+                          placeholder="Nombre y apellido"></textarea>
                 <span asp-validation-for="Nombre" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Email" class="control-label"></label>
-                <input asp-for="Email" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Email" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Email)
+                    <span id="contador_email" class="badge rounded-pill bg-secondary ms-2">320 restantes</span>
+                </label>
+                <input asp-for="Email"
+                       class="form-control"
+                       type="email"
+                       required
+                       minlength="7"
+                       maxlength="320"
+                       placeholder="correo@ejemplo.com" />
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Password" class="control-label"></label>
-                <input asp-for="Password" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Password" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Password)
+                    <span id="contador_password" class="badge rounded-pill bg-secondary ms-2">64 restantes</span>
+                </label>
+                <div class="input-group">
+                    <input asp-for="Password"
+                           class="form-control"
+                           type="password"
+                           required
+                           minlength="8"
+                           maxlength="64"
+                           placeholder="••••••••" />
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">👁️</button>
+                </div>
                 <span asp-validation-for="Password" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Rol" class="control-label"></label>
-                <input asp-for="Rol" class="form-control" />
+
+            <div class="col-12">
+                <label asp-for="Rol" class="form-label m-0">
+                    @Html.DisplayNameFor(m => m.Rol)
+                    <span id="contador_rol" class="badge rounded-pill bg-secondary ms-2">30 restantes</span>
+                </label>
+                <input asp-for="Rol"
+                       class="form-control"
+                       maxlength="30"
+                       placeholder="admin / cliente / empleado" />
                 <span asp-validation-for="Rol" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+
+            <div class="col-12 d-flex justify-content-center gap-2 mt-2">
+                <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+                <button type="submit" class="btn btn-success">✅ Guardar</button>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (() => {
+            const nombre = document.getElementById('Nombre');
+            const email = document.getElementById('Email');
+            const pass = document.getElementById('Password');
+            const rol = document.getElementById('Rol');
+
+            const bNombre = document.getElementById('contador_nombre');
+            const bEmail = document.getElementById('contador_email');
+            const bPass = document.getElementById('contador_password');
+            const bRol = document.getElementById('contador_rol');
+
+            const bindLeft = (el, badge, max) => {
+                if (!el || !badge) return;
+                const up = () => { badge.textContent = (max - (el.value || '').length) + ' restantes'; };
+                el.addEventListener('input', up); up();
+            };
+
+            const autoHeight = (ta) => {
+                if (!ta) return;
+                const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+                ta.addEventListener('input', grow); grow();
+            };
+
+            bindLeft(nombre, bNombre, 120);
+            bindLeft(email, bEmail, 320);
+            bindLeft(pass, bPass, 64);
+            bindLeft(rol, bRol, 30);
+            autoHeight(nombre);
+
+            const toggleBtn = document.getElementById('togglePassword');
+            if (toggleBtn && pass) {
+                toggleBtn.addEventListener('click', () => {
+                    pass.type = pass.type === 'password' ? 'text' : 'password';
+                    toggleBtn.textContent = pass.type === 'password' ? '👁️' : '🙈';
+                });
+            }
+        })();
+    </script>
 }

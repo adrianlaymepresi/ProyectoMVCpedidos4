@@ -1,53 +1,175 @@
 ﻿@model IEnumerable<PracticaPedidos4MVC.Models.UserModel>
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Usuarios";
+
+    int pagina = ViewBag.PaginaActual ?? 1;
+    int cant = ViewBag.CantidadRegistrosPorPagina ?? 5;
+    int totalPag = ViewBag.CantidadTotalPaginas ?? 1;
+    int winStart = ViewBag.PageWindowStart ?? 1;
+    int winEnd = ViewBag.PageWindowEnd ?? totalPag;
+    bool hasPrev = ViewBag.HasPrevPage ?? false;
+    bool hasNext = ViewBag.HasNextPage ?? false;
+    string q = ViewBag.TextoBusqueda as string ?? "";
 }
 
-<h1>Index</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">USUARIOS</h2>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Nombre)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Email)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Password)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Rol)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Nombre)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Email)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Password)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Rol)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
+        <form method="get" class="d-flex align-items-center gap-2">
+            <label for="cantidadRegistrosPorPagina" class="text-light m-0 text-nowrap">Registros por página</label>
+            <input id="cantidadRegistrosPorPagina"
+                   name="cantidadRegistrosPorPagina"
+                   class="form-control form-control-sm"
+                   type="number"
+                   min="1"
+                   max="99"
+                   inputmode="numeric"
+                   placeholder="5"
+                   value="@cant"
+                   oninput="this.value = this.value.replace(/\D/g,'').slice(0,2)"
+                   style="width:70px" />
+            <input type="hidden" name="pagina" value="1" />
+            <input type="hidden" name="q" value="@q" />
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap">👁️ Aplicar</button>
+            <a class="btn btn-sm btn-success text-nowrap" asp-action="Create">➕ Nuevo</a>
+        </form>
+    </div>
+
+    <div class="d-flex justify-content-start align-items-center mb-3">
+        <form id="formulario-busqueda" method="get" class="d-flex align-items-center gap-2">
+            <label for="q" class="text-light m-0 text-nowrap">Buscar</label>
+            <input id="q"
+                   name="q"
+                   class="form-control form-control-sm"
+                   type="search"
+                   value="@q"
+                   placeholder="🔍 Escribe para filtrar…"
+                   autocomplete="off"
+                   style="width: 250px;"
+                   maxlength="100" />
+            <input type="hidden" name="cantidadRegistrosPorPagina" value="@cant" />
+            <input type="hidden" name="pagina" value="1" />
+        </form>
+    </div>
+
+    <!-- PAGINADO (ARRIBA) -->
+    <nav class="mb-3">
+        <ul class="pagination justify-content-center flex-wrap gap-1">
+            <li class="page-item @(hasPrev ? "" : "disabled")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pagina="@(pagina - 1)"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">« Anterior</a>
+            </li>
+
+            <li class="page-item @(pagina == 1 ? "active" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pagina="1"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">1</a>
+            </li>
+
+            @if (winStart > 1)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            @for (int i = winStart; i <= winEnd; i++)
+            {
+                if (i == 1) { continue; }
+                <li class="page-item @(i == pagina ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-pagina="@i"
+                       asp-route-cantidadRegistrosPorPagina="@cant"
+                       asp-route-q="@q">@i</a>
+                </li>
+            }
+
+            @if (winEnd < totalPag)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            <li class="page-item @(hasNext ? "" : "disabled")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pagina="@(pagina + 1)"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">Siguiente »</a>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="card p-3 card-tabla">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-white">@Html.DisplayNameFor(m => m.First().Nombre)</th>
+                        <th class="text-white">@Html.DisplayNameFor(m => m.First().Email)</th>
+                        <th class="text-white">@Html.DisplayNameFor(m => m.First().Password)</th>
+                        <th class="text-white">@Html.DisplayNameFor(m => m.First().Rol)</th>
+                        <th class="text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="text-white">@item.Nombre</td>
+                                <td class="text-white">@item.Email</td>
+                                <td class="text-white">••••••••</td>
+                                <td class="text-white">@item.Rol</td>
+                                <td class="d-flex justify-content-center gap-2">
+                                    <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@item.Id">✅ Editar</a>
+                                    <a class="btn btn-sm btn-secondary" asp-action="Details" asp-route-id="@item.Id">🔎 Detalles</a>
+                                    <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@item.Id">🗑️ Eliminar</a>
+                                    @* <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@item.Id">🗑️ Eliminar</a> *@
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5" class="text-center text-white py-4">Sin resultados.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const formularioBusqueda = document.getElementById('formulario-busqueda');
+            const campoBusqueda = document.getElementById('q');
+            let temporizadorEspera;
+            const esperaMilisegundos = 600;
+
+            if (campoBusqueda) {
+                campoBusqueda.focus();
+                const valor = campoBusqueda.value;
+                campoBusqueda.value = '';
+                campoBusqueda.value = valor;
+            }
+
+            if (formularioBusqueda && campoBusqueda) {
+                campoBusqueda.addEventListener('input', () => {
+                    clearTimeout(temporizadorEspera);
+                    temporizadorEspera = setTimeout(() => {
+                        formularioBusqueda.querySelector('input[name="pagina"]').value = "1";
+                        formularioBusqueda.submit();
+                    }, esperaMilisegundos);
+                });
+            }
+        })();
+    </script>
 }
-    </tbody>
-</table>

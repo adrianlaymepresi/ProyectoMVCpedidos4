@@ -1,42 +1,49 @@
 ﻿@model PracticaPedidos4MVC.Models.UserModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles del Usuario";
 }
 
-<h1>Details</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">DETALLES DEL USUARIO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<div>
-    <h4>UserModel</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Nombre)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Nombre)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Email)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Email)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Password)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Password)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Rol)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Rol)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+    <div class="card p-3 card-tabla">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Nombre)</div>
+                    <div class="fw-medium text-white">@Model.Nombre</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Email)</div>
+                    <div class="fw-medium text-white">@Model.Email</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Password)</div>
+                    <div class="fw-medium text-white">••••••••</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Rol)</div>
+                    <div class="fw-medium text-white">@Model.Rol</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mt-4">
+            <a class="btn btn-outline-secondary" asp-action="Index">Volver</a>
+            <a class="btn btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+        </div>
+    </div>
 </div>
