@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PracticaPedidos4MVC</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/PracticaPedidos4MVC.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="top-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <a class="navbar-brand titulo-app m-0 text-black" asp-controller="Home" asp-action="Index">
+                PEDIDOS
+            </a>
+        </div>
+    </header>
+
+    <div class="wrapper d-flex">
+        <div id="content" class="content flex-grow-1" style="margin-left:0;">
+            <main role="main" class="py-3">
+                @RenderBody()
+            </main>
+
+            <footer class="footer-app text-center">
+                <div class="container">
+                    By: Ignacio Adrian Layme Delgado · 2025 ·
+                    <a class="link-contraste" asp-controller="Home" asp-action="Privacy">Privacidad</a>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

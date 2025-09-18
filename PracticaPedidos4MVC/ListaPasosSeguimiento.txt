@@ -20,7 +20,7 @@ EXTRA) Agregar relación OrderItem-Order (FK IdPedido, borrado en cascada)
 EXTRA) Agregar precisión decimales + Codigo Program + Migración inicial
 
 --- PROGRAMAR ---
-12) Configurar controladores base -> Crear controlador HomeController y vista Index
+12) Configurar controladores base -> HomeController y vista Index + interfaz de login (maqueta)
 13) Crear controlador UsersController -> Implementar CRUD básico
 14) Crear vistas de usuario -> Index, Create, Edit, Details, Delete
 15) Crear controlador ProductsController -> CRUD productos

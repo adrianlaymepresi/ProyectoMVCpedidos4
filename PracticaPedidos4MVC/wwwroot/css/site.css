@@ -148,3 +148,52 @@ body.sidebar-cerrado #content {
         transform: translateX(0);
     }
 }
+
+/* Login (layout público) */
+.login-wrapper {
+    min-height: calc(100vh - 112px); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.card-login {
+    background: #0f1113;
+    border: 1px solid #2b2f33;
+    border-radius: .75rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+
+.input-group-text {
+    background: #2c3e50;
+    color: #fff;
+    border-color: #2c3e50;
+}
+
+.form-control {
+    background: #131619;
+    color: #fff;
+    border-color: #2b2f33;
+}
+
+    .form-control:focus {
+        background: #131619;
+        color: #fff;
+        border-color: #6c5ce7;
+        box-shadow: 0 0 0 .2rem rgba(108,92,231,.25);
+    }
+
+.nav-pills .nav-link.active {
+    background-color: #6c5ce7;
+}
+
+.btn-primary {
+    background-color: #1abc9c;
+    border-color: #10927d;
+}
+
+    .btn-primary:hover {
+        background-color: #16a085;
+        border-color: #0f7a67;
+    }
