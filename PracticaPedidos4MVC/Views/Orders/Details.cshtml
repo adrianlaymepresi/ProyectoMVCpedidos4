@@ -1,42 +1,47 @@
 ﻿@model PracticaPedidos4MVC.Models.OrderModel
-
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles del Pedido";
 }
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">DETALLES DEL PEDIDO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<h1>Details</h1>
+    <div class="card p-3 card-tabla">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Fecha)</div>
+                    <div class="fw-medium text-white">@Model.Fecha.ToString("yyyy-MM-dd HH:mm")</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">Cliente</div>
+                    <div class="fw-medium text-white">@Model.Cliente?.Email</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Estado)</div>
+                    <div class="fw-medium text-white">@Model.Estado</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">@Html.DisplayNameFor(m => m.Total)</div>
+                    <div class="fw-medium text-white">@Model.Total.ToString("0.00")</div>
+                </div>
+            </div>
+        </div>
 
-<div>
-    <h4>OrderModel</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Fecha)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Fecha)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Estado)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Estado)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Total)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Total)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Cliente)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Cliente.Email)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+        <div class="d-flex justify-content-center gap-2 mt-4">
+            <a class="btn btn-outline-secondary" asp-action="Index">Volver</a>
+            <a class="btn btn-warning" asp-controller="OrderItems" asp-action="Index" asp-route-pedidoId="@Model.Id">📦 Ver ítems</a>
+        </div>
+    </div>
 </div>

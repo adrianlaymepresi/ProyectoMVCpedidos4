@@ -1,0 +1,46 @@
+﻿@model PracticaPedidos4MVC.Models.OrderItemModel
+@{
+    ViewData["Title"] = "Detalle de Ítem";
+    var pedido = Model.Pedido;
+    var producto = Model.Producto;
+}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0 text-light">DETALLE DEL ÍTEM</h2>
+            <div class="text-secondary small">Pedido #@Model.IdPedido — Cliente: @pedido?.Cliente?.Email</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">↩️ Volver</a>
+        </div>
+    </div>
+
+    <div class="card p-3 card-tabla">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">Producto</div>
+                    <div class="fw-medium text-white">@producto?.Nombre</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">Cantidad</div>
+                    <div class="fw-medium text-white">@Model.Cantidad</div>
+                </div>
+            </div>
+            <div class="col-12 col-md-3">
+                <div class="border rounded p-3 h-100" style="border-color:#2b2f33 !important;">
+                    <div class="text-secondary small">Subtotal (Bs)</div>
+                    <div class="fw-medium text-white">@Model.Subtotal.ToString("0.00")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mt-4">
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">Volver</a>
+            <a class="btn btn-success" asp-action="Edit" asp-route-id="@Model.Id">✍️ Editar</a>
+        </div>
+    </div>
+</div>

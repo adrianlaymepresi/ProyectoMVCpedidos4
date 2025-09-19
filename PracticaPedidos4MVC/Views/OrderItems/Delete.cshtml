@@ -1,0 +1,48 @@
+﻿@model PracticaPedidos4MVC.Models.OrderItemModel
+@{
+    ViewData["Title"] = "Eliminar Ítem";
+}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0 text-light">ELIMINAR ÍTEM</h2>
+            <div class="text-secondary small">Pedido #@Model.IdPedido — Cliente: @Model.Pedido?.Cliente?.Email</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">↩️ Volver</a>
+        </div>
+    </div>
+
+    <div class="card p-3 card-tabla">
+        <div class="mb-3 alert alert-warning" role="alert">
+            Esta acción es <strong>permanente</strong>. El ítem no podrá recuperarse.
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center mb-3">
+                <thead>
+                    <tr>
+                        <th class="text-white">Producto</th>
+                        <th class="text-white">Cantidad</th>
+                        <th class="text-white">Subtotal (Bs)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-white">@Model.Producto?.Nombre</td>
+                        <td class="text-white">@Model.Cantidad</td>
+                        <td class="text-white">@Model.Subtotal.ToString("0.00")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2">
+            <form asp-action="Delete" method="post" class="m-0">
+                <input type="hidden" asp-for="Id" />
+                <button type="submit" class="btn btn-danger">🗑️ Eliminar definitivamente</button>
+            </form>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">Cancelar</a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,161 @@
+﻿@model IEnumerable<PracticaPedidos4MVC.Models.OrderItemModel>
+
+@{
+    ViewData["Title"] = "Detalles del Pedido";
+    var pedido = ViewBag.Pedido as PracticaPedidos4MVC.Models.OrderModel;
+    int pedidoId = ViewBag.PedidoId;
+
+    int pagina = ViewBag.PaginaActual ?? 1;
+    int cant = ViewBag.CantidadRegistrosPorPagina ?? 5;
+    int totalPag = ViewBag.CantidadTotalPaginas ?? 1;
+    int winStart = ViewBag.PageWindowStart ?? 1;
+    int winEnd = ViewBag.PageWindowEnd ?? totalPag;
+    bool hasPrev = ViewBag.HasPrevPage ?? false;
+    bool hasNext = ViewBag.HasNextPage ?? false;
+    string q = ViewBag.TextoBusqueda as string ?? "";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0 text-light">DETALLES DEL PEDIDO #@pedidoId</h2>
+            <div class="text-secondary small">Cliente: @pedido?.Cliente?.Email</div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <form method="get" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="pedidoId" value="@pedidoId" />
+                <label for="cantidadRegistrosPorPagina" class="text-light m-0 text-nowrap">Registros por página</label>
+                <input id="cantidadRegistrosPorPagina" name="cantidadRegistrosPorPagina" class="form-control form-control-sm" type="number" min="1" max="99" inputmode="numeric" placeholder="5" value="@cant" oninput="this.value = this.value.replace(/\D/g,'').slice(0,2)" style="width:70px" />
+                <input type="hidden" name="pagina" value="1" />
+                <input type="hidden" name="q" value="@q" />
+                <button type="submit" class="btn btn-sm btn-primary text-nowrap">👁️ Aplicar</button>
+                <a class="btn btn-sm btn-success text-nowrap" asp-action="Create" asp-route-idPedido="@pedidoId">➕ Agregar ítem</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-start align-items-center mb-3">
+        <form id="formulario-busqueda" method="get" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="pedidoId" value="@pedidoId" />
+            <label for="q" class="text-light m-0 text-nowrap">Buscar por producto</label>
+            <input id="q" name="q" class="form-control form-control-sm" type="search" value="@q" placeholder="🔍 Escribe para filtrar…" autocomplete="off" style="width: 250px;" maxlength="100" />
+            <input type="hidden" name="cantidadRegistrosPorPagina" value="@cant" />
+            <input type="hidden" name="pagina" value="1" />
+        </form>
+    </div>
+
+    <nav class="mb-3">
+        <ul class="pagination justify-content-center flex-wrap gap-1">
+            <li class="page-item @(hasPrev ? "" : "disabled")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pedidoId="@pedidoId"
+                   asp-route-pagina="@(pagina - 1)"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">« Anterior</a>
+            </li>
+
+            <li class="page-item @(pagina == 1 ? "active" : "")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pedidoId="@pedidoId"
+                   asp-route-pagina="1"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">1</a>
+            </li>
+
+            @if (winStart > 1)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            @for (int i = winStart; i <= winEnd; i++)
+            {
+                if (i == 1) { continue; }
+                <li class="page-item @(i == pagina ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-pedidoId="@pedidoId"
+                       asp-route-pagina="@i"
+                       asp-route-cantidadRegistrosPorPagina="@cant"
+                       asp-route-q="@q">@i</a>
+                </li>
+            }
+
+            @if (winEnd < totalPag)
+            {
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            }
+
+            <li class="page-item @(hasNext ? "" : "disabled")">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-pedidoId="@pedidoId"
+                   asp-route-pagina="@(pagina + 1)"
+                   asp-route-cantidadRegistrosPorPagina="@cant"
+                   asp-route-q="@q">Siguiente »</a>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="card p-3 card-tabla">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-white">Producto</th>
+                        <th class="text-white">Cantidad</th>
+                        <th class="text-white">Subtotal (Bs)</th>
+                        <th class="text-white">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var d in Model)
+                        {
+                            <tr>
+                                <td class="text-white">@d.Producto?.Nombre</td>
+                                <td class="text-white">@d.Cantidad</td>
+                                <td class="text-white">@d.Subtotal.ToString("0.00")</td>
+                                <td class="d-flex justify-content-center gap-2 flex-wrap">
+                                    <a class="btn btn-sm btn-success" asp-action="Edit" asp-route-id="@d.Id">✍️ Editar</a>
+                                    <a class="btn btn-sm btn-secondary" asp-action="Details" asp-route-id="@d.Id">🔎 Detalles</a>
+                                    <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@d.Id">🗑️ Eliminar</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="4" class="text-center text-white py-4">Sin resultados.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-center gap-2 mt-3">
+            <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Index">↩️ Volver a Pedidos</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const f = document.getElementById('formulario-busqueda');
+            const q = document.getElementById('q');
+            let t; const wait = 600;
+            if (q) { q.focus(); const v = q.value; q.value=''; q.value=v; }
+            if (f && q) {
+                q.addEventListener('input', () => {
+                    clearTimeout(t);
+                    t = setTimeout(() => {
+                        f.querySelector('input[name="pagina"]').value = "1";
+                        f.submit();
+                    }, wait);
+                });
+            }
+        })();
+    </script>
+}

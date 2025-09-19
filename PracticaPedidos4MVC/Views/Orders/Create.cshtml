@@ -1,47 +1,163 @@
 ﻿@model PracticaPedidos4MVC.Models.OrderModel
-
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Crear Pedido";
 }
 
-<h1>Create</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">CREAR PEDIDO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<h4>OrderModel</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Create">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="IdCliente" class="control-label"></label>
-                <select asp-for="IdCliente" class ="form-control" asp-items="ViewBag.IdCliente"></select>
+    <div class="card p-3 card-tabla">
+        <form asp-action="Create" method="post" class="row g-3 w-100" novalidate>
+            <div class="col-12">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             </div>
-            <div class="form-group">
-                <label asp-for="Fecha" class="control-label"></label>
-                <input asp-for="Fecha" class="form-control" />
+
+            <!-- Fecha -->
+            <div class="col-12 col-md-6">
+                <label asp-for="Fecha" class="form-label m-0">@Html.DisplayNameFor(m => m.Fecha)</label>
+                <input asp-for="Fecha" class="form-control" type="datetime-local" step="60" />
                 <span asp-validation-for="Fecha" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Estado" class="control-label"></label>
-                <input asp-for="Estado" class="form-control" />
+
+            <!-- Cliente (Nombre / Email) con modal -->
+            <div class="col-12 col-md-6">
+                <label class="form-label m-0">Cliente (Nombre / Email)</label>
+                <div class="input-group">
+                    <input id="clienteResumen" class="form-control" type="text" placeholder="Seleccione el cliente…" readonly />
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalBuscarUsuario">🔎 Buscar</button>
+                </div>
+                <input type="hidden" asp-for="IdCliente" id="IdCliente" />
+                <span asp-validation-for="IdCliente" class="text-danger"></span>
+            </div>
+
+            <!-- Estado -->
+            <div class="col-12 col-md-6">
+                <label asp-for="Estado" class="form-label m-0">@Html.DisplayNameFor(m => m.Estado)</label>
+                <input asp-for="Estado" class="form-control" placeholder="pendiente / procesado / etc." />
                 <span asp-validation-for="Estado" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <label asp-for="Total" class="control-label"></label>
+
+            <!-- Total -->
+            <div class="col-12 col-md-6">
+                <label asp-for="Total" class="form-label m-0">@Html.DisplayNameFor(m => m.Total)</label>
                 <input asp-for="Total" class="form-control" />
                 <span asp-validation-for="Total" class="text-danger"></span>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+
+            <div class="col-12 d-flex justify-content-center gap-2 mt-2">
+                <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+                <button type="submit" class="btn btn-success">✅ Guardar</button>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
+<!-- Modal Buscar Usuario -->
+<div class="modal fade" id="modalBuscarUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content" style="background:#0f1113; color:#f8f9fa; border:1px solid #2b2f33;">
+            <div class="modal-header" style="background: linear-gradient(90deg, #2c3e50, #6c5ce7);">
+                <h5 class="modal-title">Seleccionar cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-buscar-usr" class="d-flex flex-wrap align-items-center gap-2 mb-3" onsubmit="return false;">
+                    <label class="m-0">Buscar</label>
+                    <input id="usr-q" class="form-control form-control-sm" type="search" placeholder="Nombre o email..." style="width: 280px;" maxlength="100" />
+                    <label class="m-0">Por página</label>
+                    <input id="usr-cant" class="form-control form-control-sm" type="number" min="1" max="99" value="5" style="width: 70px;" />
+                    <button type="button" id="usr-aplicar" class="btn btn-sm btn-primary">👁️ Aplicar</button>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover text-center mb-2">
+                        <thead>
+                            <tr>
+                                <th class="text-white">Nombre</th>
+                                <th class="text-white">Email</th>
+                                <th class="text-white">Rol</th>
+                                <th class="text-white">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usr-tbody">
+                            <tr><td colspan="4" class="text-white">Sin resultados.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav>
+                    <ul id="usr-pag" class="pagination justify-content-center flex-wrap gap-1 mb-0"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (() => {
+            const api = {
+                load: async (pagina = 1) => {
+                    const q = document.getElementById('usr-q').value || '';
+                    const pageSize = Math.max(1, Math.min(99, parseInt(document.getElementById('usr-cant').value || '5')));
+                    const url = `@Url.Action("BuscarUsuarios", "Orders")?q=${encodeURIComponent(q)}&pagina=${pagina}&cantidadRegistrosPorPagina=${pageSize}`;
+                    const r = await fetch(url);
+                    return await r.json();
+                },
+                renderRows: (items) => {
+                    const tbody = document.getElementById('usr-tbody');
+                    tbody.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-white">Sin resultados.</td></tr>`;
+                        return;
+                    }
+                    for (const it of items) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="text-white">${it.nombre || ''}</td>
+                            <td class="text-white">${it.email || ''}</td>
+                            <td class="text-white">${it.rol || ''}</td>
+                            <td><button type="button" class="btn btn-sm btn-success">➕ Elegir</button></td>
+                        `;
+                        tr.querySelector('button').onclick = () => {
+                            document.getElementById('IdCliente').value = it.id;
+                            document.getElementById('clienteResumen').value = `${it.nombre || ''} — ${it.email || ''} — ${it.rol || ''}`;
+                            bootstrap.Modal.getInstance(document.getElementById('modalBuscarUsuario')).hide();
+                        };
+                        tbody.appendChild(tr);
+                    }
+                },
+                renderPag: (d) => {
+                    const pag = document.getElementById('usr-pag'); pag.innerHTML = '';
+                    const add = (en, text, page, act=false) => {
+                        const li = document.createElement('li');
+                        li.className = `page-item ${en ? '' : 'disabled'} ${act ? 'active' : ''}`;
+                        const a = document.createElement('a'); a.className='page-link'; a.href='#'; a.textContent=text;
+                        a.onclick=(e)=>{e.preventDefault(); if(en) api.load(page).then(api.update);};
+                        li.appendChild(a); pag.appendChild(li);
+                    };
+                    add(d.hasPrev,'« Anterior',d.pagina-1);
+                    add(true,'1',1,d.pagina===1);
+                    if (d.pageWindowStart>1) pag.insertAdjacentHTML('beforeend','<li class="page-item disabled"><span class="page-link">…</span></li>');
+                    for (let i=d.pageWindowStart;i<=d.pageWindowEnd;i++){ if(i===1)continue; add(true,String(i),i,d.pagina===i); }
+                    if (d.pageWindowEnd<d.totalPaginas) pag.insertAdjacentHTML('beforeend','<li class="page-item disabled"><span class="page-link">…</span></li>');
+                    add(d.hasNext,'Siguiente »',d.pagina+1);
+                },
+                update: (d) => { api.renderRows(d.items); api.renderPag(d); }
+            };
+            document.getElementById('usr-aplicar').onclick = async () => api.load(1).then(api.update);
+            document.getElementById('modalBuscarUsuario').addEventListener('shown.bs.modal', () => {
+                api.load(1).then(api.update);
+                document.getElementById('usr-q').focus();
+            });
+        })();
+    </script>
 }

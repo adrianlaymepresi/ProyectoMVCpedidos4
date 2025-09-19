@@ -1,0 +1,176 @@
+﻿@model PracticaPedidos4MVC.Models.OrderItemModel
+@{
+    ViewData["Title"] = "Editar Ítem";
+    var pedido = ViewBag.Pedido as PracticaPedidos4MVC.Models.OrderModel;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="m-0 text-light">EDITAR ÍTEM</h2>
+            <div class="text-secondary small">Pedido #@Model.IdPedido — Cliente: @pedido?.Cliente?.Email</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">↩️ Volver</a>
+        </div>
+    </div>
+
+    <div class="card p-3 card-tabla">
+        <form asp-action="Edit" method="post" class="row g-3 w-100" novalidate>
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="IdPedido" />
+
+            <div class="col-12"><div asp-validation-summary="ModelOnly" class="text-danger"></div></div>
+
+            <div class="col-12">
+                <label class="form-label m-0">@Html.DisplayNameFor(m => m.IdProducto)</label>
+                <div class="input-group">
+                    <input id="productoNombre" class="form-control" type="text" value="@Model.Producto?.Nombre" placeholder="Seleccione el producto…" readonly />
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalBuscarProducto">🔎 Buscar</button>
+                </div>
+                <input type="hidden" asp-for="IdProducto" id="IdProducto" />
+                <span asp-validation-for="IdProducto" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label asp-for="Cantidad" class="form-label m-0">@Html.DisplayNameFor(m => m.Cantidad)</label>
+                <input asp-for="Cantidad" id="Cantidad" class="form-control" type="number" min="1" step="1" />
+                <span asp-validation-for="Cantidad" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label asp-for="Subtotal" class="form-label m-0">@Html.DisplayNameFor(m => m.Subtotal)</label>
+                <input asp-for="Subtotal" id="Subtotal" class="form-control" />
+                <div class="small text-secondary">Se prellena con (precio × cantidad), pero puedes editarlo.</div>
+                <span asp-validation-for="Subtotal" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex justify-content-center gap-2 mt-2">
+                <a class="btn btn-outline-secondary" asp-action="Index" asp-route-pedidoId="@Model.IdPedido">Cancelar</a>
+                <button type="submit" class="btn btn-success">💾 Guardar cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Buscar Producto (igual que en Create) -->
+<div class="modal fade" id="modalBuscarProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content" style="background:#0f1113; color:#f8f9fa; border:1px solid #2b2f33;">
+            <div class="modal-header" style="background: linear-gradient(90deg, #2c3e50, #6c5ce7);">
+                <h5 class="modal-title">Seleccionar producto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-buscar-prod" class="d-flex flex-wrap align-items-center gap-2 mb-3" onsubmit="return false;">
+                    <label class="m-0">Buscar</label>
+                    <input id="prod-q" class="form-control form-control-sm" type="search" placeholder="Nombre del producto…" style="width: 260px;" maxlength="100" />
+                    <label class="m-0">Por página</label>
+                    <input id="prod-cant" class="form-control form-control-sm" type="number" min="1" max="99" value="5" style="width: 70px;" />
+                    <button type="button" id="prod-aplicar" class="btn btn-sm btn-primary">👁️ Aplicar</button>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover text-center mb-2">
+                        <thead>
+                            <tr>
+                                <th class="text-white">Nombre</th>
+                                <th class="text-white">Descripción</th>
+                                <th class="text-white">Precio (Bs)</th>
+                                <th class="text-white">Stock</th>
+                                <th class="text-white">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prod-tbody">
+                            <tr><td colspan="5" class="text-white">Sin resultados.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav>
+                    <ul id="prod-pag" class="pagination justify-content-center flex-wrap gap-1 mb-0"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        (() => {
+            let precioActual = 0;
+
+            const cantInput = document.getElementById('Cantidad');
+            const subtotal = document.getElementById('Subtotal');
+
+            function calc() {
+                const c = parseFloat(cantInput.value || '0') || 0;
+                subtotal.value = (precioActual * c).toFixed(2);
+            }
+            cantInput?.addEventListener('input', calc);
+
+            const api = {
+                load: async (pagina = 1) => {
+                    const q = document.getElementById('prod-q').value || '';
+                    const pageSize = Math.max(1, Math.min(99, parseInt(document.getElementById('prod-cant').value || '5')));
+                    const url = `@Url.Action("BuscarProductos", "OrderItems")?q=${encodeURIComponent(q)}&pagina=${pagina}&cantidadRegistrosPorPagina=${pageSize}`;
+                    const r = await fetch(url);
+                    return await r.json();
+                },
+                renderRows: (items) => {
+                    const tbody = document.getElementById('prod-tbody');
+                    tbody.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-white">Sin resultados.</td></tr>`;
+                        return;
+                    }
+                    for (const it of items) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="text-white">${it.nombre ?? ''}</td>
+                            <td class="text-white">${it.descripcion ?? ''}</td>
+                            <td class="text-white">${Number(it.precio ?? 0).toFixed(2)}</td>
+                            <td class="text-white">${it.stock ?? 0}</td>
+                            <td><button type="button" class="btn btn-sm btn-success">➕ Agregar</button></td>
+                        `;
+                        tr.querySelector('button').onclick = () => {
+                            document.getElementById('IdProducto').value = it.id;
+                            document.getElementById('productoNombre').value = it.nombre ?? '';
+                            precioActual = Number(it.precio ?? 0) || 0;
+                            calc();
+                            bootstrap.Modal.getInstance(document.getElementById('modalBuscarProducto')).hide();
+                            document.getElementById('Cantidad')?.focus();
+                        };
+                        tbody.appendChild(tr);
+                    }
+                },
+                renderPag: (d) => {
+                    const pag = document.getElementById('prod-pag'); pag.innerHTML='';
+                    const add = (en, text, page, act=false) => {
+                        const li = document.createElement('li');
+                        li.className = `page-item ${en ? '' : 'disabled'} ${act ? 'active' : ''}`;
+                        const a = document.createElement('a'); a.className='page-link'; a.href='#'; a.textContent=text;
+                        a.onclick=(e)=>{e.preventDefault(); if(en) api.load(page).then(api.update);};
+                        li.appendChild(a); pag.appendChild(li);
+                    };
+                    add(d.hasPrev,'« Anterior',d.pagina-1);
+                    add(true,'1',1,d.pagina===1);
+                    if (d.pageWindowStart>1) pag.insertAdjacentHTML('beforeend','<li class="page-item disabled"><span class="page-link">…</span></li>');
+                    for (let i=d.pageWindowStart;i<=d.pageWindowEnd;i++){ if(i===1)continue; add(true,String(i),i,d.pagina===i); }
+                    if (d.pageWindowEnd<d.totalPaginas) pag.insertAdjacentHTML('beforeend','<li class="page-item disabled"><span class="page-link">…</span></li>');
+                    add(d.hasNext,'Siguiente »',d.pagina+1);
+                },
+                update: (d) => { api.renderRows(d.items); api.renderPag(d); }
+            };
+
+            document.getElementById('prod-aplicar').onclick = async () => api.load(1).then(api.update);
+            document.getElementById('modalBuscarProducto').addEventListener('shown.bs.modal', () => {
+                api.load(1).then(api.update);
+                document.getElementById('prod-q').focus();
+            });
+        })();
+    </script>
+}

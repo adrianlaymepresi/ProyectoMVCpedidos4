@@ -1,45 +1,47 @@
 ﻿@model PracticaPedidos4MVC.Models.OrderModel
-
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Eliminar Pedido";
 }
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="m-0 text-light">ELIMINAR PEDIDO</h2>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">↩️ Volver</a>
+        </div>
+    </div>
 
-<h1>Delete</h1>
+    <div class="card p-3 card-tabla">
+        <div class="mb-3 alert alert-warning" role="alert">
+            Esta acción es <strong>permanente</strong>. El pedido no podrá recuperarse.
+        </div>
 
-<h3>Are you sure you want to delete this?</h3>
-<div>
-    <h4>OrderModel</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Fecha)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Fecha)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Estado)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Estado)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Total)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Total)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Cliente)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Cliente.Email)
-        </dd>
-    </dl>
-    
-    <form asp-action="Delete">
-        <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-action="Index">Back to List</a>
-    </form>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center mb-3">
+                <thead>
+                    <tr>
+                        <th class="text-white">Fecha</th>
+                        <th class="text-white">Cliente</th>
+                        <th class="text-white">Estado</th>
+                        <th class="text-white">Total (Bs)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="text-white">@Model.Fecha.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-white">@Model.Cliente?.Email</td>
+                        <td class="text-white">@Model.Estado</td>
+                        <td class="text-white">@Model.Total.ToString("0.00")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-center gap-2">
+            <form asp-action="Delete" method="post" class="m-0">
+                <input type="hidden" asp-for="Id" />
+                <button type="submit" class="btn btn-danger">🗑️ Eliminar definitivamente</button>
+            </form>
+            <a class="btn btn-outline-secondary" asp-action="Index">Cancelar</a>
+        </div>
+    </div>
 </div>
