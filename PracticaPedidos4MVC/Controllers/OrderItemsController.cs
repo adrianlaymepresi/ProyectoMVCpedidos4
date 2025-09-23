@@ -103,13 +103,56 @@ namespace PracticaPedidos4MVC.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,IdPedido,IdProducto,Cantidad,Subtotal")] OrderItemModel model)
+        public async Task<IActionResult> Create([Bind("Id,IdPedido,IdProducto,Cantidad")] OrderItemModel model)
         {
+            // Validaciones mínimas y de stock
+            var pedido = await _context.Orders
+                .AsNoTracking()
+                .Include(p => p.Cliente)
+                .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+
+            if (pedido == null)
+            {
+                ModelState.AddModelError(string.Empty, "Pedido no válido.");
+            }
+
+            ProductModel? producto = null;
+            if (model.IdProducto <= 0)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "Debes seleccionar un producto.");
+            }
+            else
+            {
+                producto = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (producto == null)
+                {
+                    ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
+                }
+            }
+
+            if (model.Cantidad < 1)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), "La cantidad debe ser al menos 1.");
+            }
+
+            if (producto != null && model.Cantidad > producto.Stock)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
+            }
+
+            // Si hay errores, devolvemos la vista con datos coherentes
             if (!ModelState.IsValid)
             {
-                ViewBag.Pedido = await _context.Orders.AsNoTracking().Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+                model.Producto = producto;
+                if (producto != null) // mostrar subtotal calculado aunque haya error
+                    model.Subtotal = decimal.Round(producto.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
+
+                ViewBag.Pedido = pedido;
                 return View(model);
             }
+
+            // Calcular subtotal en servidor (ignorar lo que venga del form)
+            model.Subtotal = decimal.Round(producto!.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
 
             _context.Add(model);
             await _context.SaveChangesAsync();
@@ -134,33 +177,78 @@ namespace PracticaPedidos4MVC.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,IdPedido,IdProducto,Cantidad,Subtotal")] OrderItemModel model)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,IdPedido,IdProducto,Cantidad")] OrderItemModel model)
         {
             if (id != model.Id) return NotFound();
 
+            var pedido = await _context.Orders
+                .AsNoTracking()
+                .Include(p => p.Cliente)
+                .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+
+            if (pedido == null)
+            {
+                ModelState.AddModelError(string.Empty, "Pedido no válido.");
+            }
+
+            ProductModel? producto = null;
+            if (model.IdProducto <= 0)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "Debes seleccionar un producto.");
+            }
+            else
+            {
+                producto = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (producto == null)
+                {
+                    ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
+                }
+            }
+
+            if (model.Cantidad < 1)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), "La cantidad debe ser al menos 1.");
+            }
+
+            if (producto != null && model.Cantidad > producto.Stock)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
+            }
+
             if (!ModelState.IsValid)
             {
-                ViewBag.Pedido = await _context.Orders.AsNoTracking().Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+                model.Producto = producto;
+                if (producto != null)
+                    model.Subtotal = decimal.Round(producto.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
+
+                ViewBag.Pedido = pedido;
                 return View(model);
             }
 
             try
             {
+                // Recalcular subtotal en servidor
+                model.Subtotal = decimal.Round(producto!.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
+
                 _context.Update(model);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.OrderItems.Any(e => e.Id == model.Id)) return NotFound();
+                if (!_context.OrderItems.Any(e => e.Id == model.Id))
+                    return NotFound();
+
                 ModelState.AddModelError(string.Empty, "Otro usuario modificó este registro. Recarga la página.");
-                ViewBag.Pedido = await _context.Orders.AsNoTracking().Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+                model.Producto = producto;
+                ViewBag.Pedido = pedido;
                 return View(model);
             }
             catch
             {
                 ModelState.AddModelError(string.Empty, "No se pudo guardar los cambios. Intenta nuevamente.");
-                ViewBag.Pedido = await _context.Orders.AsNoTracking().Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+                model.Producto = producto;
+                ViewBag.Pedido = pedido;
                 return View(model);
             }
         }

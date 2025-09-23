@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace PracticaPedidos4MVC.Models
 {
@@ -23,7 +24,8 @@ namespace PracticaPedidos4MVC.Models
         public int Cantidad { get; set; }
 
         [Display(Name = "Subtotal")]
-        [Required, Range(0.01, 9_999_999.99)]
+        [ValidateNever]
+        [Range(0.01, 9_999_999.99)]
         // Precio * Cantidad; permite centavos
         public decimal Subtotal { get; set; }
 

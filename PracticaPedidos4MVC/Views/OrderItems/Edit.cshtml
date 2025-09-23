@@ -40,7 +40,7 @@
 
             <div class="col-12 col-md-6">
                 <label asp-for="Subtotal" class="form-label m-0">@Html.DisplayNameFor(m => m.Subtotal)</label>
-                <input asp-for="Subtotal" id="Subtotal" class="form-control" />
+                <input asp-for="Subtotal" id="Subtotal" class="form-control" readonly />
                 <div class="small text-secondary">Se prellena con (precio × cantidad), pero puedes editarlo.</div>
                 <span asp-validation-for="Subtotal" class="text-danger"></span>
             </div>
