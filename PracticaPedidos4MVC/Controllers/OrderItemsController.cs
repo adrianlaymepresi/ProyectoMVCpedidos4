@@ -105,57 +105,62 @@ namespace PracticaPedidos4MVC.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,IdPedido,IdProducto,Cantidad")] OrderItemModel model)
         {
-            // Validaciones mínimas y de stock
-            var pedido = await _context.Orders
-                .AsNoTracking()
+            // Validaciones mínimas (como ya tenías)
+            var pedido = await _context.Orders.AsNoTracking()
                 .Include(p => p.Cliente)
                 .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+            if (pedido == null) ModelState.AddModelError(string.Empty, "Pedido no válido.");
 
-            if (pedido == null)
-            {
-                ModelState.AddModelError(string.Empty, "Pedido no válido.");
-            }
-
-            ProductModel? producto = null;
+            ProductModel? productoLectura = null;
             if (model.IdProducto <= 0)
-            {
                 ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "Debes seleccionar un producto.");
-            }
             else
             {
-                producto = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
-                if (producto == null)
-                {
+                productoLectura = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (productoLectura == null)
                     ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
-                }
             }
 
             if (model.Cantidad < 1)
-            {
                 ModelState.AddModelError(nameof(OrderItemModel.Cantidad), "La cantidad debe ser al menos 1.");
-            }
 
-            if (producto != null && model.Cantidad > producto.Stock)
-            {
-                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
-            }
+            if (productoLectura != null && model.Cantidad > productoLectura.Stock)
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {productoLectura.Stock}.");
 
-            // Si hay errores, devolvemos la vista con datos coherentes
             if (!ModelState.IsValid)
             {
-                model.Producto = producto;
-                if (producto != null) // mostrar subtotal calculado aunque haya error
-                    model.Subtotal = decimal.Round(producto.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
-
+                model.Producto = productoLectura;
+                if (productoLectura != null)
+                    model.Subtotal = decimal.Round(productoLectura.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
                 ViewBag.Pedido = pedido;
                 return View(model);
             }
 
-            // Calcular subtotal en servidor (ignorar lo que venga del form)
-            model.Subtotal = decimal.Round(producto!.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
+            // --- Ajuste de stock + guardado atómico ---
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            var producto = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto); // tracking
+            if (producto == null)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
+                ViewBag.Pedido = pedido;
+                return View(model);
+            }
+
+            if (producto.Stock < model.Cantidad)
+            {
+                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
+                ViewBag.Pedido = pedido;
+                model.Producto = producto;
+                return View(model);
+            }
+
+            producto.Stock -= model.Cantidad;
+            model.Subtotal = decimal.Round(producto.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
 
             _context.Add(model);
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
 
             return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
         }
@@ -181,76 +186,100 @@ namespace PracticaPedidos4MVC.Controllers
         {
             if (id != model.Id) return NotFound();
 
-            var pedido = await _context.Orders
-                .AsNoTracking()
+            var pedido = await _context.Orders.AsNoTracking()
                 .Include(p => p.Cliente)
                 .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
+            if (pedido == null) ModelState.AddModelError(string.Empty, "Pedido no válido.");
 
-            if (pedido == null)
-            {
-                ModelState.AddModelError(string.Empty, "Pedido no válido.");
-            }
+            // Cargar el ítem original para calcular diferencias
+            var original = await _context.OrderItems.AsNoTracking().FirstOrDefaultAsync(oi => oi.Id == id);
+            if (original == null) return NotFound();
 
-            ProductModel? producto = null;
+            // Validaciones “de lectura” (como antes)
+            ProductModel? productoLectura = null;
             if (model.IdProducto <= 0)
-            {
                 ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "Debes seleccionar un producto.");
-            }
             else
             {
-                producto = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
-                if (producto == null)
-                {
+                productoLectura = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (productoLectura == null)
                     ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
-                }
             }
 
             if (model.Cantidad < 1)
-            {
                 ModelState.AddModelError(nameof(OrderItemModel.Cantidad), "La cantidad debe ser al menos 1.");
-            }
 
-            if (producto != null && model.Cantidad > producto.Stock)
+            // Comprobación de stock según el caso (misma o distinta referencia)
+            if (productoLectura != null)
             {
-                ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
+                if (model.IdProducto == original.IdProducto)
+                {
+                    var diff = model.Cantidad - original.Cantidad; // >0 pide más; <0 devuelve
+                    if (diff > 0 && diff > productoLectura.Stock)
+                        ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {productoLectura.Stock}.");
+                }
+                else
+                {
+                    if (model.Cantidad > productoLectura.Stock)
+                        ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {productoLectura.Stock}.");
+                }
             }
 
             if (!ModelState.IsValid)
             {
-                model.Producto = producto;
-                if (producto != null)
-                    model.Subtotal = decimal.Round(producto.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
-
+                model.Producto = productoLectura;
+                if (productoLectura != null)
+                    model.Subtotal = decimal.Round(productoLectura.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
                 ViewBag.Pedido = pedido;
                 return View(model);
             }
 
-            try
-            {
-                // Recalcular subtotal en servidor
-                model.Subtotal = decimal.Round(producto!.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
+            // --- Ajuste de stock + guardado atómico ---
+            await using var tx = await _context.Database.BeginTransactionAsync();
 
-                _context.Update(model);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
-            }
-            catch (DbUpdateConcurrencyException)
+            if (model.IdProducto == original.IdProducto)
             {
-                if (!_context.OrderItems.Any(e => e.Id == model.Id))
-                    return NotFound();
+                var prod = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (prod == null) return NotFound();
 
-                ModelState.AddModelError(string.Empty, "Otro usuario modificó este registro. Recarga la página.");
-                model.Producto = producto;
-                ViewBag.Pedido = pedido;
-                return View(model);
+                var diff = model.Cantidad - original.Cantidad;  // positivo => restar del stock
+                if (diff > 0 && prod.Stock < diff)
+                {
+                    ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {prod.Stock}.");
+                    ViewBag.Pedido = pedido;
+                    model.Producto = prod;
+                    return View(model);
+                }
+                prod.Stock -= diff; // si diff < 0, suma stock
+                model.Subtotal = decimal.Round(prod.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
             }
-            catch
+            else
             {
-                ModelState.AddModelError(string.Empty, "No se pudo guardar los cambios. Intenta nuevamente.");
-                model.Producto = producto;
-                ViewBag.Pedido = pedido;
-                return View(model);
+                var prodOld = await _context.Products.FirstOrDefaultAsync(p => p.Id == original.IdProducto);
+                var prodNew = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto);
+                if (prodOld == null || prodNew == null) return NotFound();
+
+                // devolver stock al producto anterior
+                prodOld.Stock += original.Cantidad;
+
+                // descontar del nuevo (validado antes, pero revalidamos por seguridad)
+                if (prodNew.Stock < model.Cantidad)
+                {
+                    ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {prodNew.Stock}.");
+                    ViewBag.Pedido = pedido;
+                    model.Producto = prodNew;
+                    return View(model);
+                }
+                prodNew.Stock -= model.Cantidad;
+
+                model.Subtotal = decimal.Round(prodNew.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
             }
+
+            _context.Update(model);
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
         }
 
         // DETALLES
@@ -286,12 +315,20 @@ namespace PracticaPedidos4MVC.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var det = await _context.OrderItems.FindAsync(id);
+            var det = await _context.OrderItems.FirstOrDefaultAsync(d => d.Id == id);
             if (det == null) return RedirectToAction("Index", "Orders");
 
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            var prod = await _context.Products.FirstOrDefaultAsync(p => p.Id == det.IdProducto);
+            if (prod != null)
+                prod.Stock += det.Cantidad; // devolver al stock
+
             int pedidoId = det.IdPedido;
+
             _context.OrderItems.Remove(det);
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
 
             return RedirectToAction(nameof(Index), new { pedidoId });
         }
