@@ -26,7 +26,7 @@ namespace PracticaPedidos4MVC.Controllers
 
             var todos = await _context.Orders
                 .AsNoTracking()
-                .Include(o => o.Cliente) // Email
+                .Include(o => o.Cliente)
                 .ToListAsync();
 
             var termino = (q ?? "").Trim();
@@ -105,9 +105,12 @@ namespace PracticaPedidos4MVC.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,IdCliente,Fecha,Estado,Total")] OrderModel orderModel)
+        public async Task<IActionResult> Create([Bind("Id,IdCliente,Fecha,Estado")] OrderModel orderModel)
         {
             if (!ModelState.IsValid) return View(orderModel);
+
+            // El total NO viene del form; se inicia en 0 y lo mantienen los ítems
+            orderModel.Total = 0m;
 
             _context.Add(orderModel);
             await _context.SaveChangesAsync();
@@ -130,23 +133,20 @@ namespace PracticaPedidos4MVC.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,IdCliente,Fecha,Estado,Total")] OrderModel orderModel)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,IdCliente,Fecha,Estado")] OrderModel orderModel)
         {
             if (id != orderModel.Id) return NotFound();
-
             if (!ModelState.IsValid) return View(orderModel);
 
-            try
-            {
-                _context.Update(orderModel);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Orders.Any(e => e.Id == orderModel.Id)) return NotFound();
-                throw;
-            }
+            // Cargar el existente y actualizar SOLO campos editables, sin tocar Total
+            var existing = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            if (existing == null) return NotFound();
 
+            existing.IdCliente = orderModel.IdCliente;
+            existing.Fecha = orderModel.Fecha;
+            existing.Estado = orderModel.Estado;
+
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
@@ -174,7 +174,7 @@ namespace PracticaPedidos4MVC.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // ====== AJAX: Buscar usuarios (por Nombre o Email) para el modal ======
+        // ====== AJAX: Buscar usuarios ======
         [HttpGet]
         public async Task<IActionResult> BuscarUsuarios(string q = "", int pagina = 1, int cantidadRegistrosPorPagina = 5)
         {
@@ -187,22 +187,13 @@ namespace PracticaPedidos4MVC.Controllers
 
             var todos = await _context.Users
                 .AsNoTracking()
-                .Select(u => new
-                {
-                    u.Id,
-                    u.Nombre,
-                    u.Email,
-                    u.Rol
-                })
+                .Select(u => new { u.Id, u.Nombre, u.Email, u.Rol })
                 .ToListAsync();
 
             IEnumerable<dynamic> fuente;
             if (terminoNorm.Length == 0)
             {
-                fuente = todos
-                    .OrderBy(u => u.Nombre)
-                    .ThenBy(u => u.Email)
-                    .ThenBy(u => u.Id);
+                fuente = todos.OrderBy(u => u.Nombre).ThenBy(u => u.Email).ThenBy(u => u.Id);
             }
             else
             {
@@ -213,7 +204,6 @@ namespace PracticaPedidos4MVC.Controllers
                         var mailNorm = NormalizarTexto(u.Email ?? "");
                         var r1 = CalcularRelevancia(nomNorm, terminoNorm);
                         var r2 = CalcularRelevancia(mailNorm, terminoNorm);
-                        // Elegimos la mejor relevancia entre nombre y email
                         var best = (r1.empieza < r2.empieza) ||
                                    (r1.empieza == r2.empieza && (r1.indice < r2.indice ||
                                    (r1.indice == r2.indice && r1.diferenciaLongitud <= r2.diferenciaLongitud)))
@@ -240,13 +230,7 @@ namespace PracticaPedidos4MVC.Controllers
 
             int omitir = (pagina - 1) * cantidadRegistrosPorPagina;
             var items = fuente.Skip(omitir).Take(cantidadRegistrosPorPagina)
-                .Select(u => new
-                {
-                    id = u.Id,
-                    nombre = u.Nombre ?? "",
-                    email = u.Email ?? "",
-                    rol = u.Rol ?? ""
-                })
+                .Select(u => new { id = u.Id, nombre = u.Nombre ?? "", email = u.Email ?? "", rol = u.Rol ?? "" })
                 .ToList();
 
             return Json(new

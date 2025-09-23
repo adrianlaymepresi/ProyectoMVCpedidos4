@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using System.ComponentModel.DataAnnotations;
 
 namespace PracticaPedidos4MVC.Models
 {
@@ -23,7 +24,8 @@ namespace PracticaPedidos4MVC.Models
         public string Estado { get; set; }
 
         [Display(Name = "Total del Pedido")]
-        [Required, Range(0.00, 9_999_999.99)]
+        [ValidateNever]
+        [Range(0.00, 9_999_999.99)]
         // Suma de subtotales; permite 0.00 si aún no se cargan ítems
         public decimal Total { get; set; }
 

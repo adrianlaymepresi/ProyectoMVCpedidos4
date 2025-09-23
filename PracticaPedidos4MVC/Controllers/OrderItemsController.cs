@@ -105,7 +105,6 @@ namespace PracticaPedidos4MVC.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,IdPedido,IdProducto,Cantidad")] OrderItemModel model)
         {
-            // Validaciones mínimas (como ya tenías)
             var pedido = await _context.Orders.AsNoTracking()
                 .Include(p => p.Cliente)
                 .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
@@ -136,17 +135,15 @@ namespace PracticaPedidos4MVC.Controllers
                 return View(model);
             }
 
-            // --- Ajuste de stock + guardado atómico ---
             await using var tx = await _context.Database.BeginTransactionAsync();
 
-            var producto = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto); // tracking
+            var producto = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto);
             if (producto == null)
             {
                 ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "El producto seleccionado no existe.");
                 ViewBag.Pedido = pedido;
                 return View(model);
             }
-
             if (producto.Stock < model.Cantidad)
             {
                 ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {producto.Stock}.");
@@ -160,8 +157,11 @@ namespace PracticaPedidos4MVC.Controllers
 
             _context.Add(model);
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
 
+            // ⬇️ Recalcular total del pedido
+            await RecalcularTotalPedido(model.IdPedido);
+
+            await tx.CommitAsync();
             return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
         }
 
@@ -191,11 +191,9 @@ namespace PracticaPedidos4MVC.Controllers
                 .FirstOrDefaultAsync(p => p.Id == model.IdPedido);
             if (pedido == null) ModelState.AddModelError(string.Empty, "Pedido no válido.");
 
-            // Cargar el ítem original para calcular diferencias
             var original = await _context.OrderItems.AsNoTracking().FirstOrDefaultAsync(oi => oi.Id == id);
             if (original == null) return NotFound();
 
-            // Validaciones “de lectura” (como antes)
             ProductModel? productoLectura = null;
             if (model.IdProducto <= 0)
                 ModelState.AddModelError(nameof(OrderItemModel.IdProducto), "Debes seleccionar un producto.");
@@ -209,12 +207,11 @@ namespace PracticaPedidos4MVC.Controllers
             if (model.Cantidad < 1)
                 ModelState.AddModelError(nameof(OrderItemModel.Cantidad), "La cantidad debe ser al menos 1.");
 
-            // Comprobación de stock según el caso (misma o distinta referencia)
             if (productoLectura != null)
             {
                 if (model.IdProducto == original.IdProducto)
                 {
-                    var diff = model.Cantidad - original.Cantidad; // >0 pide más; <0 devuelve
+                    var diff = model.Cantidad - original.Cantidad;
                     if (diff > 0 && diff > productoLectura.Stock)
                         ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {productoLectura.Stock}.");
                 }
@@ -234,7 +231,6 @@ namespace PracticaPedidos4MVC.Controllers
                 return View(model);
             }
 
-            // --- Ajuste de stock + guardado atómico ---
             await using var tx = await _context.Database.BeginTransactionAsync();
 
             if (model.IdProducto == original.IdProducto)
@@ -242,7 +238,7 @@ namespace PracticaPedidos4MVC.Controllers
                 var prod = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto);
                 if (prod == null) return NotFound();
 
-                var diff = model.Cantidad - original.Cantidad;  // positivo => restar del stock
+                var diff = model.Cantidad - original.Cantidad;
                 if (diff > 0 && prod.Stock < diff)
                 {
                     ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {prod.Stock}.");
@@ -250,7 +246,7 @@ namespace PracticaPedidos4MVC.Controllers
                     model.Producto = prod;
                     return View(model);
                 }
-                prod.Stock -= diff; // si diff < 0, suma stock
+                prod.Stock -= diff; // si diff < 0, regresa stock
                 model.Subtotal = decimal.Round(prod.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
             }
             else
@@ -259,10 +255,7 @@ namespace PracticaPedidos4MVC.Controllers
                 var prodNew = await _context.Products.FirstOrDefaultAsync(p => p.Id == model.IdProducto);
                 if (prodOld == null || prodNew == null) return NotFound();
 
-                // devolver stock al producto anterior
                 prodOld.Stock += original.Cantidad;
-
-                // descontar del nuevo (validado antes, pero revalidamos por seguridad)
                 if (prodNew.Stock < model.Cantidad)
                 {
                     ModelState.AddModelError(nameof(OrderItemModel.Cantidad), $"Stock insuficiente. Disponible: {prodNew.Stock}.");
@@ -271,14 +264,16 @@ namespace PracticaPedidos4MVC.Controllers
                     return View(model);
                 }
                 prodNew.Stock -= model.Cantidad;
-
                 model.Subtotal = decimal.Round(prodNew.Precio * model.Cantidad, 2, MidpointRounding.AwayFromZero);
             }
 
             _context.Update(model);
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
 
+            // ⬇️ Recalcular total del pedido
+            await RecalcularTotalPedido(model.IdPedido);
+
+            await tx.CommitAsync();
             return RedirectToAction(nameof(Index), new { pedidoId = model.IdPedido });
         }
 
@@ -321,15 +316,17 @@ namespace PracticaPedidos4MVC.Controllers
             await using var tx = await _context.Database.BeginTransactionAsync();
 
             var prod = await _context.Products.FirstOrDefaultAsync(p => p.Id == det.IdProducto);
-            if (prod != null)
-                prod.Stock += det.Cantidad; // devolver al stock
+            if (prod != null) prod.Stock += det.Cantidad;
 
             int pedidoId = det.IdPedido;
 
             _context.OrderItems.Remove(det);
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
 
+            // ⬇️ Recalcular total del pedido
+            await RecalcularTotalPedido(pedidoId);
+
+            await tx.CommitAsync();
             return RedirectToAction(nameof(Index), new { pedidoId });
         }
 
@@ -420,6 +417,21 @@ namespace PracticaPedidos4MVC.Controllers
             if (indice < 0) indice = int.MaxValue;
             var dif = Math.Abs(nombreNormalizado.Length - terminoNormalizado.Length);
             return (empieza, indice, dif);
+        }
+
+        // ⬇️ NUEVO: recalcular total del pedido
+        private async Task RecalcularTotalPedido(int pedidoId)
+        {
+            // sumo desde DB (items ya guardados), default 0 si no hay
+            var total = await _context.OrderItems
+                            .Where(i => i.IdPedido == pedidoId)
+                            .SumAsync(i => (decimal?)i.Subtotal) ?? 0m;
+
+            var pedido = await _context.Orders.FirstOrDefaultAsync(p => p.Id == pedidoId);
+            if (pedido == null) return;
+
+            pedido.Total = decimal.Round(total, 2, MidpointRounding.AwayFromZero);
+            await _context.SaveChangesAsync();
         }
     }
 }
