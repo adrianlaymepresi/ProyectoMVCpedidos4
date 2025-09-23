@@ -19,7 +19,8 @@ namespace PracticaPedidos4MVC.Models
         public DateTime Fecha { get; set; }
 
         [Display(Name = "Estado del Pedido")]
-        [Required, StringLength(20, MinimumLength = 7)]
+        [ValidateNever]
+        [StringLength(20, MinimumLength = 7)]
         // Valores esperados: Pendiente, Procesado, Enviado, Entregado
         public string Estado { get; set; }
 

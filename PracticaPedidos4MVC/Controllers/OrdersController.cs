@@ -5,12 +5,20 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PracticaPedidos4MVC.Data;
 using PracticaPedidos4MVC.Models;
+using System.Linq;
 
 namespace PracticaPedidos4MVC.Controllers
 {
     public class OrdersController : Controller
     {
         private readonly PedidosDBContext _context;
+
+        // Catálogo de estados válidos
+        private static readonly string[] EstadosPermitidos =
+            new[] { "Pendiente", "Procesado", "Enviado", "Entregado" };
+
+        private static bool EsEstadoValido(string? e) =>
+            !string.IsNullOrWhiteSpace(e) && EstadosPermitidos.Contains(e);
 
         public OrdersController(PedidosDBContext context)
         {
@@ -26,7 +34,7 @@ namespace PracticaPedidos4MVC.Controllers
 
             var todos = await _context.Orders
                 .AsNoTracking()
-                .Include(o => o.Cliente)
+                .Include(o => o.Cliente) // Necesario para mostrar nombre y email
                 .ToListAsync();
 
             var termino = (q ?? "").Trim();
@@ -97,27 +105,34 @@ namespace PracticaPedidos4MVC.Controllers
             return View(order);
         }
 
-        // CREAR
+        // CREAR (GET) — Estado predefinido y bloqueado en la vista
         public IActionResult Create()
         {
-            return View();
+            var m = new OrderModel
+            {
+                Fecha = DateTime.Now,
+                Estado = "Pendiente",
+                Total = 0m
+            };
+            return View(m);
         }
 
+        // CREAR (POST) — Forzar estado Pendiente y total 0
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,IdCliente,Fecha,Estado")] OrderModel orderModel)
+        public async Task<IActionResult> Create([Bind("IdCliente,Fecha")] OrderModel orderModel)
         {
             if (!ModelState.IsValid) return View(orderModel);
 
-            // El total NO viene del form; se inicia en 0 y lo mantienen los ítems
-            orderModel.Total = 0m;
+            orderModel.Estado = "Pendiente"; // forzado
+            orderModel.Total = 0m;           // el total lo calculan los ítems
 
             _context.Add(orderModel);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        // EDITAR
+        // EDITAR (GET) — Proveer lista de estados (si quieres usar ViewBag)
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -128,17 +143,27 @@ namespace PracticaPedidos4MVC.Controllers
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null) return NotFound();
+
+            ViewBag.Estados = EstadosPermitidos;
             return View(order);
         }
 
+        // EDITAR (POST) — Validar estado permitido, mantener Total intacto
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,IdCliente,Fecha,Estado")] OrderModel orderModel)
         {
             if (id != orderModel.Id) return NotFound();
-            if (!ModelState.IsValid) return View(orderModel);
 
-            // Cargar el existente y actualizar SOLO campos editables, sin tocar Total
+            if (!EsEstadoValido(orderModel.Estado))
+                ModelState.AddModelError(nameof(OrderModel.Estado), "Estado inválido.");
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.Estados = EstadosPermitidos;
+                return View(orderModel);
+            }
+
             var existing = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
             if (existing == null) return NotFound();
 
@@ -174,7 +199,7 @@ namespace PracticaPedidos4MVC.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // ====== AJAX: Buscar usuarios ======
+        // ====== AJAX: Buscar usuarios (por Nombre o Email) para el modal ======
         [HttpGet]
         public async Task<IActionResult> BuscarUsuarios(string q = "", int pagina = 1, int cantidadRegistrosPorPagina = 5)
         {
@@ -187,13 +212,22 @@ namespace PracticaPedidos4MVC.Controllers
 
             var todos = await _context.Users
                 .AsNoTracking()
-                .Select(u => new { u.Id, u.Nombre, u.Email, u.Rol })
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Nombre,
+                    u.Email,
+                    u.Rol
+                })
                 .ToListAsync();
 
             IEnumerable<dynamic> fuente;
             if (terminoNorm.Length == 0)
             {
-                fuente = todos.OrderBy(u => u.Nombre).ThenBy(u => u.Email).ThenBy(u => u.Id);
+                fuente = todos
+                    .OrderBy(u => u.Nombre)
+                    .ThenBy(u => u.Email)
+                    .ThenBy(u => u.Id);
             }
             else
             {
@@ -230,7 +264,13 @@ namespace PracticaPedidos4MVC.Controllers
 
             int omitir = (pagina - 1) * cantidadRegistrosPorPagina;
             var items = fuente.Skip(omitir).Take(cantidadRegistrosPorPagina)
-                .Select(u => new { id = u.Id, nombre = u.Nombre ?? "", email = u.Email ?? "", rol = u.Rol ?? "" })
+                .Select(u => new
+                {
+                    id = u.Id,
+                    nombre = u.Nombre ?? "",
+                    email = u.Email ?? "",
+                    rol = u.Rol ?? ""
+                })
                 .ToList();
 
             return Json(new

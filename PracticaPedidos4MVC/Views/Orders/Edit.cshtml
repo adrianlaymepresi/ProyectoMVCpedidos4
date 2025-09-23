@@ -35,16 +35,23 @@
                 <span asp-validation-for="IdCliente" class="text-danger"></span>
             </div>
 
+            <!-- Estado: select con 4 opciones -->
             <div class="col-12 col-md-6">
                 <label asp-for="Estado" class="form-label m-0">@Html.DisplayNameFor(m => m.Estado)</label>
-                <input asp-for="Estado" class="form-control" />
+                <select asp-for="Estado" class="form-select">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Procesado">Procesado</option>
+                    <option value="Enviado">Enviado</option>
+                    <option value="Entregado">Entregado</option>
+                </select>
                 <span asp-validation-for="Estado" class="text-danger"></span>
             </div>
 
+            <!-- Total (solo informativo) -->
             <div class="col-12 col-md-6">
                 <label asp-for="Total" class="form-label m-0">@Html.DisplayNameFor(m => m.Total)</label>
-                <input asp-for="Total" class="form-control" />
-                <span asp-validation-for="Total" class="text-danger"></span>
+                <input class="form-control" value="@Model.Total.ToString("0.00")" readonly />
+                <div class="small text-secondary">Se actualiza automáticamente con la suma de ítems.</div>
             </div>
 
             <div class="col-12 d-flex justify-content-center gap-2 mt-2">

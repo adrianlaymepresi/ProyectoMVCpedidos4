@@ -35,18 +35,19 @@
                 <span asp-validation-for="IdCliente" class="text-danger"></span>
             </div>
 
-            <!-- Estado -->
+            <!-- Estado (bloqueado a Pendiente) -->
             <div class="col-12 col-md-6">
                 <label asp-for="Estado" class="form-label m-0">@Html.DisplayNameFor(m => m.Estado)</label>
-                <input asp-for="Estado" class="form-control" placeholder="pendiente / procesado / etc." />
+                <input class="form-control" value="Pendiente" readonly />
+                <input type="hidden" asp-for="Estado" value="Pendiente" />
                 <span asp-validation-for="Estado" class="text-danger"></span>
             </div>
 
-            <!-- Total -->
+            <!-- Total (solo informativo) -->
             <div class="col-12 col-md-6">
                 <label asp-for="Total" class="form-label m-0">@Html.DisplayNameFor(m => m.Total)</label>
-                <input asp-for="Total" class="form-control" />
-                <span asp-validation-for="Total" class="text-danger"></span>
+                <input class="form-control" value="@Model.Total.ToString("0.00")" readonly />
+                <div class="small text-secondary">Se actualiza automáticamente con la suma de ítems.</div>
             </div>
 
             <div class="col-12 d-flex justify-content-center gap-2 mt-2">
