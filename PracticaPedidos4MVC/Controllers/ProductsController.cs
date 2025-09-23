@@ -112,7 +112,6 @@ namespace PracticaPedidos4MVC.Controllers
                 {
                     if (terminoNorm.Length == 0)
                     {
-                        // Si no hay término, solo ordenamos por categoría/nombre
                         fuente = todos
                             .OrderBy(p => p.Categoria)
                             .ThenBy(p => p.Nombre)
@@ -144,12 +143,10 @@ namespace PracticaPedidos4MVC.Controllers
                 {
                     if (!rangoValido)
                     {
-                        // Si el rango no es válido, mostramos todo ordenado por precio y dejamos los errores en ModelState
                         fuente = todos.OrderBy(p => p.Precio).ThenBy(p => p.Id);
                     }
                     else
                     {
-                        // Rango válido => filtramos
                         var min = minPrecio!.Value;
                         var max = maxPrecio!.Value;
 
@@ -239,8 +236,8 @@ namespace PracticaPedidos4MVC.Controllers
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
             ValidarCategoria(productModel);
-            ValidarPrecio(productModel);
-            ValidarStock(productModel);
+            ValidarPrecio(productModel);   // precio > 0 y máx 2 decimales
+            ValidarStock(productModel);    // stock ≥ 0
             await ValidarNombreUnicoAsync(productModel);
 
             if (!ModelState.IsValid) return View(productModel);
@@ -285,8 +282,8 @@ namespace PracticaPedidos4MVC.Controllers
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
             ValidarCategoria(productModel);
-            ValidarPrecio(productModel);
-            ValidarStock(productModel);
+            ValidarPrecio(productModel);   // precio > 0 y máx 2 decimales
+            ValidarStock(productModel);    // stock ≥ 0
             await ValidarNombreUnicoAsync(productModel, excluirId: id);
 
             if (!ModelState.IsValid) return View(productModel);
