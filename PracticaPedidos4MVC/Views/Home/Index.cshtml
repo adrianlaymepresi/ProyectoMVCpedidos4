@@ -1,6 +1,7 @@
-﻿@{
+﻿@model PracticaPedidos4MVC.Models.LoginViewModel
+@{
     ViewData["Title"] = "Iniciar sesión";
-    Layout = "_Layout"; // "_LayoutPublic" // Usar diseño público posteriormente
+    Layout = "_LayoutPublic";
 }
 
 <div class="login-wrapper">
@@ -12,55 +13,52 @@
                 <p class="text-white-50 mb-0">Ingresa con tu email o usuario</p>
             </div>
 
-            <!-- Pestañas: Email / Usuario (UI; sin lógica aún) -->
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+            <!-- Pestañas: Email / Usuario -->
             <ul class="nav nav-pills justify-content-center mb-3" id="loginTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="tab-email" data-bs-toggle="tab" data-bs-target="#panel-email" type="button" role="tab" aria-controls="panel-email" aria-selected="true">✉️ Email</button>
+                    <button class="nav-link active" id="tab-email" data-bs-toggle="tab" data-bs-target="#panel-email" type="button" role="tab">✉️ Email</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="tab-usuario" data-bs-toggle="tab" data-bs-target="#panel-usuario" type="button" role="tab" aria-controls="panel-usuario" aria-selected="false">👤 Usuario</button>
+                    <button class="nav-link" id="tab-usuario" data-bs-toggle="tab" data-bs-target="#panel-usuario" type="button" role="tab">👤 Usuario</button>
                 </li>
             </ul>
 
-            <form action="#" method="post" novalidate>
+            <form asp-action="Index" method="post" novalidate>
+                @Html.AntiForgeryToken()
+
                 <div class="tab-content mb-3">
-                    <!-- Login por Email -->
                     <div class="tab-pane fade show active" id="panel-email" role="tabpanel" aria-labelledby="tab-email">
                         <div class="mb-3">
-                            <label for="Email" class="form-label">Correo electrónico</label>
+                            <label asp-for="Email" class="form-label"></label>
                             <div class="input-group">
                                 <span class="input-group-text">✉️</span>
-                                <input type="email" class="form-control" id="Email" name="Email" placeholder="ej: usuario@correo.com" autocomplete="email" required>
+                                <input asp-for="Email" class="form-control" type="email" placeholder="ej: usuario@correo.com" autocomplete="email">
                             </div>
+                            <span asp-validation-for="Email" class="text-danger"></span>
                         </div>
                     </div>
 
-                    <!-- Login por Usuario -->
                     <div class="tab-pane fade" id="panel-usuario" role="tabpanel" aria-labelledby="tab-usuario">
                         <div class="mb-3">
-                            <label for="Nombre" class="form-label">Nombre de usuario</label>
+                            <label asp-for="Nombre" class="form-label"></label>
                             <div class="input-group">
                                 <span class="input-group-text">👤</span>
-                                <input type="text" class="form-control" id="Nombre" name="Nombre" placeholder="ej: juan.perez" autocomplete="username" required>
+                                <input asp-for="Nombre" class="form-control" type="text" placeholder="ej: juan.perez" autocomplete="username">
                             </div>
+                            <span asp-validation-for="Nombre" class="text-danger"></span>
                         </div>
                     </div>
                 </div>
 
                 <div class="mb-3">
-                    <label for="Password" class="form-label">Contraseña</label>
+                    <label asp-for="Password" class="form-label"></label>
                     <div class="input-group">
                         <span class="input-group-text">🔒</span>
-                        <input type="password" class="form-control" id="Password" name="Password" placeholder="••••••••" autocomplete="current-password" required>
+                        <input asp-for="Password" class="form-control" type="password" placeholder="••••••••" autocomplete="current-password" required>
                     </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="RememberMe">
-                        <label class="form-check-label" for="RememberMe">Recordarme</label>
-                    </div>
-                    <a href="#" class="link-contraste">¿Olvidaste tu contraseña?</a>
+                    <span asp-validation-for="Password" class="text-danger"></span>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 fw-semibold">
@@ -71,3 +69,8 @@
     </div>
 </div>
 
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

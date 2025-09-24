@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,10 +6,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 //===========================================================//
-// A�ADIMOS LA CREDENCIAL PARA QUE USE NUESTRO CONTEXTO
+// AÑADIMOS LA CREDENCIAL PARA QUE USE NUESTRO CONTEXTO
 builder.Services.AddDbContext<PracticaPedidos4MVC.Data.PedidosDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 //===========================================================//
+
+// ⇩ NECESARIO para sesiones
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(2);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
@@ -17,7 +27,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -26,6 +35,10 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// ⇩ HABILITAR sesión
+app.UseSession();
+
+// No usamos autenticación/autorization en este commit, pero no estorban:
 app.UseAuthorization();
 
 app.MapControllerRoute(

@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@* Views/Shared/_Layout.cshtml *@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -12,6 +13,26 @@
     <header class="top-header">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <a class="navbar-brand titulo-app m-0 text-black" asp-controller="Home" asp-action="Index">PEDIDOS</a>
+
+            <div class="d-flex align-items-center gap-3">
+                @{
+                    var userName = Context.Session.GetString("Auth:UserName");
+                    var userRole = Context.Session.GetString("Auth:UserRole");
+                }
+                @if (!string.IsNullOrEmpty(userName))
+                {
+                    <span class="text-dark small">Hola, <strong>@userName</strong> (@userRole)</span>
+
+                    <form id="logoutForm" asp-controller="Home" asp-action="Logout" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="if(confirm('¿Seguro que deseas cerrar sesión?')) this.form.submit();">
+                            ⎋ Logout
+                        </button>
+                    </form>
+                }
+            </div>
+
             <button id="toggleSidebar" class="btn btn-sm btn-toggle">☰ MENU</button>
         </div>
     </header>
