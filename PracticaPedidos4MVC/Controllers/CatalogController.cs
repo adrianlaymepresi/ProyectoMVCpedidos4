@@ -10,13 +10,14 @@ namespace PracticaPedidos4MVC.Controllers
 {
     public class CatalogController : Controller
     {
-        private readonly PedidosDBContext _context;
-        private readonly ILogger<CatalogController> _logger;
+        private readonly PedidosDBContext _dbContext;
 
-        public CatalogController(PedidosDBContext context, ILogger<CatalogController> logger)
+        // Longitud máxima permitida para el texto de búsqueda del catálogo
+        private const int LongitudMaximaBusqueda = 60;
+
+        public CatalogController(PedidosDBContext dbContext)
         {
-            _context = context;
-            _logger = logger;
+            _dbContext = dbContext;
         }
 
         // LISTADO de productos SOLO-LECTURA con búsqueda + paginación
@@ -24,72 +25,108 @@ namespace PracticaPedidos4MVC.Controllers
         {
             try
             {
-                if (cantidadRegistrosPorPagina < 1) cantidadRegistrosPorPagina = 5;
-                if (cantidadRegistrosPorPagina > 99) cantidadRegistrosPorPagina = 99;
-                if (pagina < 1) pagina = 1;
+                // Normalización de parámetros de paginación
+                int paginaNormalizada = pagina < 1 ? 1 : pagina;
+                int registrosPorPaginaNormalizados = Math.Clamp(cantidadRegistrosPorPagina, 1, 99);
 
-                var termino = (q ?? "").Trim();
-                var terminoNorm = NormalizarTexto(termino);
+                // Sanitización del texto de búsqueda (defensa adicional contra payloads maliciosos)
+                (string textoBusquedaSanitizado, string? mensajeBloqueoSeguridad) = SanearTextoBusqueda(q);
+                ViewBag.TextoBusqueda = textoBusquedaSanitizado; // lo que queda tras sanitizar
 
-                var todos = await _context.Products.AsNoTracking().ToListAsync();
-
-                IEnumerable<ProductModel> fuente;
-                if (terminoNorm.Length == 0)
+                // Si se detectó una firma peligrosa, se ignora el filtro y se muestra un aviso
+                if (!string.IsNullOrEmpty(mensajeBloqueoSeguridad))
                 {
-                    fuente = todos.OrderBy(p => p.Nombre).ThenBy(p => p.Id);
+                    ViewBag.MensajeFiltroBloqueado = mensajeBloqueoSeguridad;
+                    textoBusquedaSanitizado = string.Empty; // fuerza listado completo seguro
+                }
+
+                string terminoBusquedaNormalizado = NormalizarTexto(textoBusquedaSanitizado);
+
+                // Cargar todos los productos en modo solo-lectura
+                List<ProductModel> listaProductos = await _dbContext
+                    .Products
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                IEnumerable<ProductModel> productosFiltrados;
+
+                if (string.IsNullOrEmpty(terminoBusquedaNormalizado))
+                {
+                    productosFiltrados = listaProductos
+                        .OrderBy(p => p.Nombre)
+                        .ThenBy(p => p.Id);
                 }
                 else
                 {
-                    fuente = todos
-                        .Select(p => new { P = p, NomNorm = NormalizarTexto(p.Nombre ?? ""), DescNorm = NormalizarTexto(p.Descripcion ?? "") })
-                        .Where(x => x.NomNorm.Contains(terminoNorm) || x.DescNorm.Contains(terminoNorm))
+                    // Búsqueda en memoria (nombre/descripcion) con cálculo simple de relevancia
+                    productosFiltrados = listaProductos
+                        .Select(p => new
+                        {
+                            Producto = p,
+                            NombreNormalizado = NormalizarTexto(p.Nombre ?? string.Empty),
+                            DescripcionNormalizada = NormalizarTexto(p.Descripcion ?? string.Empty)
+                        })
+                        .Where(x => x.NombreNormalizado.Contains(terminoBusquedaNormalizado)
+                                 || x.DescripcionNormalizada.Contains(terminoBusquedaNormalizado))
                         .Select(x =>
                         {
-                            var r1 = CalcularRelevancia(x.NomNorm, terminoNorm);
-                            var r2 = CalcularRelevancia(x.DescNorm, terminoNorm);
-                            var best = (r1.empieza < r2.empieza) ||
-                                       (r1.empieza == r2.empieza && (r1.indice < r2.indice ||
-                                       (r1.indice == r2.indice && r1.diferenciaLongitud <= r2.diferenciaLongitud)))
-                                       ? r1 : r2;
-                            return new { x.P, Relev = best };
+                            var relevanciaNombre = CalcularRelevancia(x.NombreNormalizado, terminoBusquedaNormalizado);
+                            var relevanciaDescripcion = CalcularRelevancia(x.DescripcionNormalizada, terminoBusquedaNormalizado);
+
+                            // Elegir la mejor relevancia entre nombre y descripción
+                            var relevanciaGanadora =
+                                (relevanciaNombre.empieza < relevanciaDescripcion.empieza) ||
+                                (relevanciaNombre.empieza == relevanciaDescripcion.empieza &&
+                                 (relevanciaNombre.indice < relevanciaDescripcion.indice ||
+                                  (relevanciaNombre.indice == relevanciaDescripcion.indice &&
+                                   relevanciaNombre.diferenciaLongitud <= relevanciaDescripcion.diferenciaLongitud)))
+                                ? relevanciaNombre
+                                : relevanciaDescripcion;
+
+                            return new { x.Producto, Relevancia = relevanciaGanadora };
                         })
-                        .OrderBy(x => x.Relev.empieza)
-                        .ThenBy(x => x.Relev.indice)
-                        .ThenBy(x => x.Relev.diferenciaLongitud)
-                        .ThenBy(x => x.P.Id)
-                        .Select(x => x.P);
+                        .OrderBy(x => x.Relevancia.empieza)
+                        .ThenBy(x => x.Relevancia.indice)
+                        .ThenBy(x => x.Relevancia.diferenciaLongitud)
+                        .ThenBy(x => x.Producto.Id)
+                        .Select(x => x.Producto);
                 }
 
-                var totalRegistros = fuente.Count();
-                var totalPaginas = Math.Max(1, (int)Math.Ceiling(totalRegistros / (double)cantidadRegistrosPorPagina));
-                if (pagina > totalPaginas) pagina = totalPaginas;
+                // Paginación
+                int totalRegistros = productosFiltrados.Count();
+                int totalPaginas = Math.Max(1, (int)Math.Ceiling(totalRegistros / (double)registrosPorPaginaNormalizados));
+                if (paginaNormalizada > totalPaginas) paginaNormalizada = totalPaginas;
 
-                const int Window = 10;
-                int winStart = ((pagina - 1) / Window) * Window + 1;
-                if (winStart < 1) winStart = 1;
-                int winEnd = Math.Min(winStart + Window - 1, totalPaginas);
+                const int TamanoVentanaPaginacion = 10;
+                int inicioVentana = ((paginaNormalizada - 1) / TamanoVentanaPaginacion) * TamanoVentanaPaginacion + 1;
+                if (inicioVentana < 1) inicioVentana = 1;
+                int finVentana = Math.Min(inicioVentana + TamanoVentanaPaginacion - 1, totalPaginas);
 
-                int omitir = (pagina - 1) * cantidadRegistrosPorPagina;
-                var items = fuente.Skip(omitir).Take(cantidadRegistrosPorPagina).ToList();
+                int cantidadAExcluir = (paginaNormalizada - 1) * registrosPorPaginaNormalizados;
 
-                ViewBag.PaginaActual = pagina;
-                ViewBag.CantidadRegistrosPorPagina = cantidadRegistrosPorPagina;
-                ViewBag.TextoBusqueda = termino;
+                List<ProductModel> paginaDeProductos = productosFiltrados
+                    .Skip(cantidadAExcluir)
+                    .Take(registrosPorPaginaNormalizados)
+                    .ToList();
+
+                // Datos para la vista
+                ViewBag.PaginaActual = paginaNormalizada;
+                ViewBag.CantidadRegistrosPorPagina = registrosPorPaginaNormalizados;
                 ViewBag.CantidadTotalPaginas = totalPaginas;
-                ViewBag.PageWindowStart = winStart;
-                ViewBag.PageWindowEnd = winEnd;
-                ViewBag.HasPrevPage = pagina > 1;
-                ViewBag.HasNextPage = pagina < totalPaginas;
+                ViewBag.PageWindowStart = inicioVentana;
+                ViewBag.PageWindowEnd = finVentana;
+                ViewBag.HasPrevPage = paginaNormalizada > 1;
+                ViewBag.HasNextPage = paginaNormalizada < totalPaginas;
 
-                return View(items);
+                return View(paginaDeProductos);
             }
-            catch (Exception ex)
+            catch
             {
-                _logger.LogError(ex, "Error al cargar el catálogo.");
+                // Falla controlada y mensaje amigable
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar el catálogo.");
                 ViewBag.PaginaActual = 1;
                 ViewBag.CantidadRegistrosPorPagina = 5;
-                ViewBag.TextoBusqueda = "";
+                ViewBag.TextoBusqueda = string.Empty;
                 ViewBag.CantidadTotalPaginas = 1;
                 ViewBag.PageWindowStart = 1;
                 ViewBag.PageWindowEnd = 1;
@@ -99,27 +136,77 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // ====== helpers ======
+        // ===== Sanitización / bloqueo simple del filtro público =====
+        private static (string textoSanitizado, string? mensajeBloqueoSeguridad) SanearTextoBusqueda(string textoBusquedaOriginal)
+        {
+            string textoRecortado = (textoBusquedaOriginal ?? string.Empty).Trim();
+
+            // Limitar longitud para evitar payloads gigantes en un formulario público
+            if (textoRecortado.Length > LongitudMaximaBusqueda)
+            {
+                textoRecortado = textoRecortado.Substring(0, LongitudMaximaBusqueda);
+            }
+
+            string textoEnMinusculas = textoRecortado.ToLowerInvariant();
+
+            // Firmas “clásicas” de SQLi que NO tienen sentido en un buscador público
+            string[] patronesSospechosos =
+            {
+                "--",
+                "/*",
+                "*/",
+                ";",
+                "xp_",
+                "exec ",
+                "execute ",
+                "drop ",
+                "alter ",
+                "create ",
+                "insert ",
+                "update ",
+                "delete ",
+                "truncate ",
+                "union ",
+                "select "
+            };
+
+            foreach (string patron in patronesSospechosos)
+            {
+                if (textoEnMinusculas.Contains(patron))
+                {
+                    string mensajeBloqueo = $"Tu búsqueda contiene el patrón no permitido “{patron.Trim()}”. Se ha bloqueado por seguridad.";
+                    return (textoRecortado, mensajeBloqueo);
+                }
+            }
+
+            return (textoRecortado, null);
+        }
+
+        // ===== Utilitarios de normalización y relevancia =====
         private static string NormalizarTexto(string texto)
         {
             if (string.IsNullOrWhiteSpace(texto)) return string.Empty;
-            var descomp = texto.Normalize(NormalizationForm.FormD);
-            var sb = new StringBuilder(descomp.Length);
-            foreach (var c in descomp)
+
+            string textoDescompuesto = texto.Normalize(NormalizationForm.FormD);
+            var acumulador = new StringBuilder(textoDescompuesto.Length);
+
+            foreach (char caracter in textoDescompuesto)
             {
-                var cat = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (cat != UnicodeCategory.NonSpacingMark) sb.Append(c);
+                var categoria = CharUnicodeInfo.GetUnicodeCategory(caracter);
+                if (categoria != UnicodeCategory.NonSpacingMark)
+                    acumulador.Append(caracter);
             }
-            return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+
+            return acumulador.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
         }
 
-        private static (int empieza, int indice, int diferenciaLongitud) CalcularRelevancia(string nombreNormalizado, string terminoNormalizado)
+        private static (int empieza, int indice, int diferenciaLongitud) CalcularRelevancia(string baseNormalizada, string terminoNormalizado)
         {
-            var empieza = nombreNormalizado.StartsWith(terminoNormalizado, StringComparison.Ordinal) ? 0 : 1;
-            var indice = nombreNormalizado.IndexOf(terminoNormalizado, StringComparison.Ordinal);
+            int empieza = baseNormalizada.StartsWith(terminoNormalizado, StringComparison.Ordinal) ? 0 : 1;
+            int indice = baseNormalizada.IndexOf(terminoNormalizado, StringComparison.Ordinal);
             if (indice < 0) indice = int.MaxValue;
-            var dif = Math.Abs(nombreNormalizado.Length - terminoNormalizado.Length);
-            return (empieza, indice, dif);
+            int diferenciaLongitud = Math.Abs(baseNormalizada.Length - terminoNormalizado.Length);
+            return (empieza, indice, diferenciaLongitud);
         }
     }
 }

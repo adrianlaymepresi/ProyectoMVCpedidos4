@@ -43,4 +43,4 @@ EXTRA) Seguridad: roles fijos admin/empleado/cliente (select en Create/Edit + va
 
 --- VALIDACIONES FUERTES ---
 29) Manejar errores en controlador -> Try/catch y mensajes amigables
-30) Sanitizar entradas de usuario -> Evitar inyección de código o SQL
+30) Sanitizar entradas (anti-SQLi): CRUD con LINQ/EF parametrizado; y hardening del buscador público de Catálogo (longitud máx + bloqueo de firmas SQL).
