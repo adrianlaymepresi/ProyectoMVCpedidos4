@@ -70,14 +70,13 @@
             </div>
 
             <div class="col-12">
-                <label asp-for="Rol" class="form-label m-0">
-                    @Html.DisplayNameFor(m => m.Rol)
-                    <span id="contador_rol" class="badge rounded-pill bg-secondary ms-2">30 restantes</span>
-                </label>
-                <input asp-for="Rol"
-                       class="form-control"
-                       maxlength="30"
-                       placeholder="admin / cliente / empleado" />
+                <label asp-for="Rol" class="form-label m-0">@Html.DisplayNameFor(m => m.Rol)</label>
+                <select asp-for="Rol" class="form-select">
+                    <option value="">— Selecciona un rol —</option>
+                    <option value="admin">admin</option>
+                    <option value="empleado">empleado</option>
+                    <option value="cliente">cliente</option>
+                </select>
                 <span asp-validation-for="Rol" class="text-danger"></span>
             </div>
 
@@ -98,12 +97,10 @@
             const nombre = document.getElementById('Nombre');
             const email = document.getElementById('Email');
             const pass = document.getElementById('Password');
-            const rol = document.getElementById('Rol');
 
             const bNombre = document.getElementById('contador_nombre');
             const bEmail = document.getElementById('contador_email');
             const bPass = document.getElementById('contador_password');
-            const bRol = document.getElementById('contador_rol');
 
             const bindLeft = (el, badge, max) => {
                 if (!el || !badge) return;
@@ -120,7 +117,6 @@
             bindLeft(nombre, bNombre, 120);
             bindLeft(email, bEmail, 320);
             bindLeft(pass, bPass, 64);
-            bindLeft(rol, bRol, 30);
             autoHeight(nombre);
 
             const toggleBtn = document.getElementById('togglePassword');

@@ -26,12 +26,16 @@ namespace PracticaPedidos4MVC.Controllers
             Timeout = TimeSpan.FromSeconds(3)
         });
 
+        // Roles permitidos
+        private static readonly string[] AllowedRoles = new[] { "admin", "empleado", "cliente" };
+
         public UsersController(PedidosDBContext context)
         {
             _context = context;
         }
 
-        // ===== Helpers de rol (manual, sin [Authorize]) =====
+        // ===== Helpers de sesión/rol (manual, sin [Authorize]) =====
+        private int? CurrentUserId() => HttpContext.Session.GetInt32("Auth:UserId");
         private string CurrentRole() => (HttpContext.Session.GetString("Auth:UserRole") ?? "").ToLowerInvariant();
         private bool IsAdmin() => CurrentRole() == "admin";
         private IActionResult ForbidToCatalogIfNotAdmin()
@@ -243,8 +247,15 @@ namespace PracticaPedidos4MVC.Controllers
             if (id == null) return NotFound();
             try
             {
-                var userModel = await _context.Users.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
+                var userModel = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Id == id);
+
                 if (userModel == null) return NotFound();
+
+                // Bloquear eliminación de sí mismo (señal a la vista)
+                ViewBag.ForbiddenSelfDelete = CurrentUserId().HasValue && CurrentUserId()!.Value == userModel.Id;
+
                 return View(userModel);
             }
             catch
@@ -259,6 +270,13 @@ namespace PracticaPedidos4MVC.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+
+            // Re-chequeo server: tampoco permitir en POST
+            if (CurrentUserId().HasValue && CurrentUserId()!.Value == id)
+            {
+                // Simplemente redirigimos al listado (podrías usar TempData para un mensaje si quieres)
+                return RedirectToAction(nameof(Index));
+            }
 
             try
             {
@@ -281,7 +299,7 @@ namespace PracticaPedidos4MVC.Controllers
         private bool UserModelExists(int id) => _context.Users.Any(e => e.Id == id);
 
         // =========================
-        //  Validaciones (igual que ya tenías)
+        //  Validaciones (ajustada la de Rol)
         // =========================
         private void ValidarNombre(UserModel u)
         {
@@ -348,12 +366,16 @@ namespace PracticaPedidos4MVC.Controllers
 
         private void ValidarRol(UserModel u)
         {
-            var rol = (u.Rol ?? "").Trim();
+            var rol = (u.Rol ?? "").Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(rol))
+            {
                 ModelState.AddModelError(nameof(UserModel.Rol), "El rol es obligatorio.");
-            else if (rol.Length > 30)
-                ModelState.AddModelError(nameof(UserModel.Rol), "Máximo 30 caracteres.");
-            u.Rol = rol;
+            }
+            else if (!AllowedRoles.Contains(rol))
+            {
+                ModelState.AddModelError(nameof(UserModel.Rol), "Rol inválido. Debe ser: admin, empleado o cliente.");
+            }
+            u.Rol = rol; // normalizamos en minúsculas
         }
 
         private async Task ValidarDuplicadosAsync(UserModel u, int? excluirId = null)
