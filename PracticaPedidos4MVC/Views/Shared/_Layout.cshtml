@@ -17,7 +17,7 @@
             <div class="d-flex align-items-center gap-3">
                 @{
                     var userName = Context.Session.GetString("Auth:UserName");
-                    var userRole = Context.Session.GetString("Auth:UserRole");
+                    var userRole = (Context.Session.GetString("Auth:UserRole") ?? "").ToLowerInvariant();
                 }
                 @if (!string.IsNullOrEmpty(userName))
                 {
@@ -39,16 +39,37 @@
 
     <div class="wrapper d-flex">
         <nav id="sidebar" class="sidebar">
+            @{
+                var role = (Context.Session.GetString("Auth:UserRole") ?? "").ToLowerInvariant();
+            }
             <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a class="nav-link text-white" asp-controller="Users" asp-action="Index">👤 Users</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" asp-controller="Products" asp-action="Index">🧺 Products</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-white" asp-controller="Orders" asp-action="Index">📝 Orders</a>
-                </li>
+                @if (role == "admin")
+                {
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Users" asp-action="Index">👤 Users</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Products" asp-action="Index">🧺 Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Orders" asp-action="Index">📝 Orders</a>
+                    </li>
+                }
+                else if (role == "empleado")
+                {
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Products" asp-action="Index">🧺 Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Orders" asp-action="Index">📝 Orders</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="nav-link text-white" asp-controller="Catalog" asp-action="Index">📚 Catálogo</a>
+                    </li>
+                }
             </ul>
         </nav>
 

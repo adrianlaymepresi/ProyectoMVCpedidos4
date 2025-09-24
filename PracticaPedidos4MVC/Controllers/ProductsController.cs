@@ -1,4 +1,5 @@
-﻿using System;
+﻿// Controllers/ProductsController.cs
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -20,18 +21,29 @@ namespace PracticaPedidos4MVC.Controllers
             _context = context;
         }
 
+        // ===== Helpers de rol =====
+        private string CurrentRole() => (HttpContext.Session.GetString("Auth:UserRole") ?? "").ToLowerInvariant();
+        private bool IsAdminOrEmpleado()
+        {
+            var r = CurrentRole();
+            return r == "admin" || r == "empleado";
+        }
+        private IActionResult ForbidToCatalogIfNotAdminOrEmpleado()
+            => IsAdminOrEmpleado() ? null! : RedirectToAction("Index", "Catalog");
+
         // =========================
-        //  LISTADO con búsqueda + paginación + filtro (nombre/categoría/precio)
+        //  LISTADO con búsqueda + paginación + filtro
         // =========================
-        // GET: Products
         public async Task<IActionResult> Index(
             int pagina = 1,
             int cantidadRegistrosPorPagina = 5,
             string q = "",
-            string modo = "nombre",          // "nombre" | "categoria" | "precio"
+            string modo = "nombre",
             decimal? minPrecio = null,
             decimal? maxPrecio = null)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             try
             {
                 // Normalización parámetros
@@ -42,9 +54,7 @@ namespace PracticaPedidos4MVC.Controllers
                 if (cantidadRegistrosPorPagina > 99) cantidadRegistrosPorPagina = 99;
                 if (pagina < 1) pagina = 1;
 
-                var todos = await _context.Products
-                    .AsNoTracking()
-                    .ToListAsync();
+                var todos = await _context.Products.AsNoTracking().ToListAsync();
 
                 // VALIDACIONES de rango de precio cuando corresponde
                 bool rangoValido = true;
@@ -80,9 +90,7 @@ namespace PracticaPedidos4MVC.Controllers
                 {
                     if (terminoNorm.Length == 0)
                     {
-                        fuente = todos
-                            .OrderBy(p => p.Nombre)
-                            .ThenBy(p => p.Id);
+                        fuente = todos.OrderBy(p => p.Nombre).ThenBy(p => p.Id);
                     }
                     else
                     {
@@ -112,25 +120,14 @@ namespace PracticaPedidos4MVC.Controllers
                 {
                     if (terminoNorm.Length == 0)
                     {
-                        fuente = todos
-                            .OrderBy(p => p.Categoria)
-                            .ThenBy(p => p.Nombre)
-                            .ThenBy(p => p.Id);
+                        fuente = todos.OrderBy(p => p.Categoria).ThenBy(p => p.Nombre).ThenBy(p => p.Id);
                     }
                     else
                     {
                         var query = todos
-                            .Select(p => new
-                            {
-                                P = p,
-                                CatNorm = NormalizarTexto(p.Categoria ?? "")
-                            })
+                            .Select(p => new { P = p, CatNorm = NormalizarTexto(p.Categoria ?? "") })
                             .Where(x => x.CatNorm.Contains(terminoNorm))
-                            .Select(x => new
-                            {
-                                x.P,
-                                Rel = CalcularRelevancia(x.CatNorm, terminoNorm)
-                            })
+                            .Select(x => new { x.P, Rel = CalcularRelevancia(x.CatNorm, terminoNorm) })
                             .OrderBy(x => x.Rel.empieza)
                             .ThenBy(x => x.Rel.indice)
                             .ThenBy(x => x.Rel.diferenciaLongitud)
@@ -139,7 +136,7 @@ namespace PracticaPedidos4MVC.Controllers
                         fuente = query.Select(x => x.P);
                     }
                 }
-                else // modo == "precio"
+                else // precio
                 {
                     if (!rangoValido)
                     {
@@ -169,12 +166,8 @@ namespace PracticaPedidos4MVC.Controllers
 
                 int omitir = (pagina - 1) * cantidadRegistrosPorPagina;
 
-                var items = fuente
-                    .Skip(omitir)
-                    .Take(cantidadRegistrosPorPagina)
-                    .ToList();
+                var items = fuente.Skip(omitir).Take(cantidadRegistrosPorPagina).ToList();
 
-                // ViewBags para la vista
                 ViewBag.PaginaActual = pagina;
                 ViewBag.CantidadRegistrosPorPagina = cantidadRegistrosPorPagina;
                 ViewBag.TextoBusqueda = termino;
@@ -208,9 +201,11 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Products/Details/5
         public async Task<IActionResult> Details(int? id)
         {
+            // Si un cliente intenta entrar aquí, lo mandamos al catálogo.
+            if (!IsAdminOrEmpleado()) return RedirectToAction("Index", "Catalog");
+
             if (id == null) return NotFound();
             try
             {
@@ -225,19 +220,23 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Products/Create
-        public IActionResult Create() => View();
+        public IActionResult Create()
+        {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+            return View();
+        }
 
-        // POST: Products/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Nombre,Descripcion,Categoria,Precio,Stock")] ProductModel productModel)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
             ValidarCategoria(productModel);
-            ValidarPrecio(productModel);   // precio > 0 y máx 2 decimales
-            ValidarStock(productModel);    // stock ≥ 0
+            ValidarPrecio(productModel);
+            ValidarStock(productModel);
             await ValidarNombreUnicoAsync(productModel);
 
             if (!ModelState.IsValid) return View(productModel);
@@ -255,9 +254,10 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Products/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             if (id == null) return NotFound();
             try
             {
@@ -272,18 +272,19 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // POST: Products/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Descripcion,Categoria,Precio,Stock")] ProductModel productModel)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             if (id != productModel.Id) return NotFound();
 
             ValidarNombre(productModel);
             ValidarDescripcion(productModel);
             ValidarCategoria(productModel);
-            ValidarPrecio(productModel);   // precio > 0 y máx 2 decimales
-            ValidarStock(productModel);    // stock ≥ 0
+            ValidarPrecio(productModel);
+            ValidarStock(productModel);
             await ValidarNombreUnicoAsync(productModel, excluirId: id);
 
             if (!ModelState.IsValid) return View(productModel);
@@ -307,9 +308,10 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Products/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             if (id == null) return NotFound();
             try
             {
@@ -324,11 +326,12 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // POST: Products/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
+
             try
             {
                 var productModel = await _context.Products.FindAsync(id);
@@ -349,9 +352,7 @@ namespace PracticaPedidos4MVC.Controllers
 
         private bool ProductModelExists(int id) => _context.Products.Any(e => e.Id == id);
 
-        // =========================
-        //  Validaciones en controlador
-        // =========================
+        // ===== Validaciones / utilitarios (como ya tenías) =====
         private void ValidarNombre(ProductModel p)
         {
             var nombre = (p.Nombre ?? "").Trim();
@@ -418,9 +419,6 @@ namespace PracticaPedidos4MVC.Controllers
                 ModelState.AddModelError(nameof(ProductModel.Nombre), "Ya existe un producto con el mismo nombre.");
         }
 
-        // =========================
-        //  Utilitarios de búsqueda
-        // =========================
         private static string NormalizarTexto(string texto)
         {
             if (string.IsNullOrWhiteSpace(texto)) return string.Empty;

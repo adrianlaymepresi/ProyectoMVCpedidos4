@@ -30,8 +30,18 @@ namespace PracticaPedidos4MVC.Controllers
         [HttpGet]
         public IActionResult Index()
         {
-            if (HttpContext.Session.GetInt32(SK_USER_ID).HasValue)
-                return RedirectToAction("Index", "Orders");
+            var userId = HttpContext.Session.GetInt32(SK_USER_ID);
+            if (userId.HasValue)
+            {
+                // Redirección según rol
+                var role = (HttpContext.Session.GetString(SK_USER_ROLE) ?? "cliente").ToLowerInvariant();
+                return role switch
+                {
+                    "admin" => RedirectToAction("Index", "Users"),
+                    "empleado" => RedirectToAction("Index", "Orders"),
+                    _ => RedirectToAction("Index", "Catalog")
+                };
+            }
 
             ViewData["Title"] = "Iniciar sesión";
             return View(new LoginViewModel());
@@ -105,8 +115,14 @@ namespace PracticaPedidos4MVC.Controllers
             HttpContext.Session.Remove(SK_FAILED_COUNT);
             HttpContext.Session.Remove(SK_BLOCK_UNTIL);
 
-            // Ir al layout normal (panel). Puedes cambiar a Users/Index si prefieres.
-            return RedirectToAction("Index", "Orders");
+            // Redirección según rol
+            var role = (user.Rol ?? "cliente").ToLowerInvariant();
+            return role switch
+            {
+                "admin" => RedirectToAction("Index", "Users"),
+                "empleado" => RedirectToAction("Index", "Orders"),
+                _ => RedirectToAction("Index", "Catalog")
+            };
         }
 
         // POST: logout (con confirmación desde el layout)

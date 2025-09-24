@@ -1,4 +1,5 @@
-﻿using System;
+﻿// Controllers/UsersController.cs
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Net.Mail;
@@ -30,21 +31,26 @@ namespace PracticaPedidos4MVC.Controllers
             _context = context;
         }
 
+        // ===== Helpers de rol (manual, sin [Authorize]) =====
+        private string CurrentRole() => (HttpContext.Session.GetString("Auth:UserRole") ?? "").ToLowerInvariant();
+        private bool IsAdmin() => CurrentRole() == "admin";
+        private IActionResult ForbidToCatalogIfNotAdmin()
+            => IsAdmin() ? null! : RedirectToAction("Index", "Catalog");
+
         // =========================
         //  LISTADO con búsqueda + paginación
         // =========================
-        // GET: Users
         public async Task<IActionResult> Index(int pagina = 1, int cantidadRegistrosPorPagina = 5, string q = "")
         {
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+
             try
             {
                 if (cantidadRegistrosPorPagina < 1) cantidadRegistrosPorPagina = 5;
                 if (cantidadRegistrosPorPagina > 99) cantidadRegistrosPorPagina = 99;
                 if (pagina < 1) pagina = 1;
 
-                var todos = await _context.Users
-                    .AsNoTracking()
-                    .ToListAsync();
+                var todos = await _context.Users.AsNoTracking().ToListAsync();
 
                 var termino = (q ?? "").Trim();
                 var terminoNorm = NormalizarTexto(termino);
@@ -59,7 +65,6 @@ namespace PracticaPedidos4MVC.Controllers
                 }
                 else
                 {
-                    // pre-normalizamos campos para filtrar por Nombre / Email / Rol
                     var query = todos
                         .Select(u => new
                         {
@@ -74,12 +79,10 @@ namespace PracticaPedidos4MVC.Controllers
                         .Select(x => new
                         {
                             x.U,
-                            // Relevancia: priorizamos coincidencia por nombre
                             RelNom = CalcularRelevancia(x.NomNorm, terminoNorm),
                             RelEmail = CalcularRelevancia(x.EmailNorm, terminoNorm),
                             RelRol = CalcularRelevancia(x.RolNorm, terminoNorm)
                         })
-                        // Orden: primero si empieza por el término (nombre), luego índice, etc.
                         .OrderBy(x => x.RelNom.empieza)
                         .ThenBy(x => x.RelNom.indice)
                         .ThenBy(x => x.RelNom.diferenciaLongitud)
@@ -92,7 +95,6 @@ namespace PracticaPedidos4MVC.Controllers
                 var cantidadTotalPaginas = Math.Max(1, (int)Math.Ceiling(totalRegistros / (double)cantidadRegistrosPorPagina));
                 if (pagina > cantidadTotalPaginas) pagina = cantidadTotalPaginas;
 
-                // Ventana de 10 páginas
                 const int WindowSize = 10;
                 int pageWindowStart = ((pagina - 1) / WindowSize) * WindowSize + 1;
                 if (pageWindowStart < 1) pageWindowStart = 1;
@@ -100,12 +102,8 @@ namespace PracticaPedidos4MVC.Controllers
 
                 int omitir = (pagina - 1) * cantidadRegistrosPorPagina;
 
-                var items = fuente
-                    .Skip(omitir)
-                    .Take(cantidadRegistrosPorPagina)
-                    .ToList();
+                var items = fuente.Skip(omitir).Take(cantidadRegistrosPorPagina).ToList();
 
-                // ViewBags esperados por la vista
                 ViewBag.PaginaActual = pagina;
                 ViewBag.CantidadRegistrosPorPagina = cantidadRegistrosPorPagina;
                 ViewBag.TextoBusqueda = termino;
@@ -119,9 +117,7 @@ namespace PracticaPedidos4MVC.Controllers
             }
             catch
             {
-                // Mensaje genérico; se detallará en el paso 29
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar los usuarios.");
-                // Devolvemos un listado vacío para que la vista no falle
                 ViewBag.PaginaActual = 1;
                 ViewBag.CantidadRegistrosPorPagina = 5;
                 ViewBag.TextoBusqueda = "";
@@ -134,17 +130,14 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Users/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
+            if (id == null) return NotFound();
             try
             {
-                var userModel = await _context.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.Id == id);
-
+                var userModel = await _context.Users.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 if (userModel == null) return NotFound();
                 return View(userModel);
             }
@@ -155,18 +148,21 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Users/Create
-        public IActionResult Create() => View();
+        public IActionResult Create()
+        {
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+            return View();
+        }
 
-        // POST: Users/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Nombre,Email,Password,Rol")] UserModel userModel)
         {
-            // Validaciones servidor
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+
             ValidarNombre(userModel);
             ValidarEmail(userModel);
-            await ValidarEmailDominioAsync(userModel);  // MX
+            await ValidarEmailDominioAsync(userModel);
             ValidarPassword(userModel);
             ValidarRol(userModel);
             await ValidarDuplicadosAsync(userModel);
@@ -186,11 +182,11 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Users/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null) return NotFound();
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
+            if (id == null) return NotFound();
             try
             {
                 var userModel = await _context.Users.FindAsync(id);
@@ -204,17 +200,17 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // POST: Users/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Nombre,Email,Password,Rol")] UserModel userModel)
         {
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+
             if (id != userModel.Id) return NotFound();
 
-            // Validaciones servidor
             ValidarNombre(userModel);
             ValidarEmail(userModel);
-            await ValidarEmailDominioAsync(userModel);  // MX
+            await ValidarEmailDominioAsync(userModel);
             ValidarPassword(userModel);
             ValidarRol(userModel);
             await ValidarDuplicadosAsync(userModel, excluirId: id);
@@ -240,17 +236,14 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // GET: Users/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null) return NotFound();
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
+            if (id == null) return NotFound();
             try
             {
-                var userModel = await _context.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.Id == id);
-
+                var userModel = await _context.Users.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 if (userModel == null) return NotFound();
                 return View(userModel);
             }
@@ -261,11 +254,12 @@ namespace PracticaPedidos4MVC.Controllers
             }
         }
 
-        // POST: Users/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
+
             try
             {
                 var userModel = await _context.Users.FindAsync(id);
@@ -287,7 +281,7 @@ namespace PracticaPedidos4MVC.Controllers
         private bool UserModelExists(int id) => _context.Users.Any(e => e.Id == id);
 
         // =========================
-        //  Validaciones en controlador
+        //  Validaciones (igual que ya tenías)
         // =========================
         private void ValidarNombre(UserModel u)
         {
@@ -364,22 +358,16 @@ namespace PracticaPedidos4MVC.Controllers
 
         private async Task ValidarDuplicadosAsync(UserModel u, int? excluirId = null)
         {
-            // Normalizamos SOLO del lado del parámetro (en memoria)
-            var nombreParam = (u.Nombre ?? "").Trim();                 // ej.: "José Pérez"
+            var nombreParam = (u.Nombre ?? "").Trim();
             var emailParam = (u.Email ?? "").Trim().ToLowerInvariant();
 
-            // Comparación por NOMBRE con collation insensible a acentos y mayúsculas.
-            // Nota: EF.Functions.Collate se traduce a:  [Columna] COLLATE SQL_Latin1_General_CP1_CI_AI
             bool nombreDuplicado = await _context.Users.AsNoTracking()
                 .Where(x => excluirId == null || x.Id != excluirId.Value)
-                .AnyAsync(x =>
-                    EF.Functions.Collate(x.Nombre, "SQL_Latin1_General_CP1_CI_AI") == nombreParam
-                );
+                .AnyAsync(x => EF.Functions.Collate(x.Nombre, "SQL_Latin1_General_CP1_CI_AI") == nombreParam);
 
             if (nombreDuplicado)
                 ModelState.AddModelError(nameof(UserModel.Nombre), "Ya existe un usuario con este nombre.");
 
-            // Comparación por EMAIL (case-insensitive). Trim/ToLower sí se traducen a SQL.
             bool emailDuplicado = await _context.Users.AsNoTracking()
                 .Where(x => excluirId == null || x.Id != excluirId.Value)
                 .AnyAsync(x => ((x.Email ?? "").Trim().ToLower()) == emailParam);
@@ -387,7 +375,6 @@ namespace PracticaPedidos4MVC.Controllers
             if (emailDuplicado)
                 ModelState.AddModelError(nameof(UserModel.Email), "Ya existe un usuario con este email.");
         }
-
 
         // =========================
         //  Utilitarios
@@ -432,7 +419,6 @@ namespace PracticaPedidos4MVC.Controllers
             catch { return false; }
         }
 
-        // Relevancia usada en búsqueda
         private static (int empieza, int indice, int diferenciaLongitud) CalcularRelevancia(string baseNorm, string terminoNorm)
         {
             var empieza = baseNorm.StartsWith(terminoNorm, StringComparison.Ordinal) ? 0 : 1;
