@@ -17,6 +17,7 @@ namespace PracticaPedidos4MVC.Controllers
     public class UsersController : Controller
     {
         private readonly PedidosDBContext _context;
+        private readonly ILogger<UsersController> _logger;
 
         // Reutilizamos el cliente DNS (cache + timeout razonable)
         private static readonly LookupClient Dns = new LookupClient(new LookupClientOptions
@@ -29,9 +30,10 @@ namespace PracticaPedidos4MVC.Controllers
         // Roles permitidos
         private static readonly string[] AllowedRoles = new[] { "admin", "empleado", "cliente" };
 
-        public UsersController(PedidosDBContext context)
+        public UsersController(PedidosDBContext context, ILogger<UsersController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // ===== Helpers de sesión/rol (manual, sin [Authorize]) =====
@@ -119,8 +121,9 @@ namespace PracticaPedidos4MVC.Controllers
 
                 return View(items);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar listado de Users.");
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar los usuarios.");
                 ViewBag.PaginaActual = 1;
                 ViewBag.CantidadRegistrosPorPagina = 5;
@@ -138,15 +141,16 @@ namespace PracticaPedidos4MVC.Controllers
         {
             var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
                 var userModel = await _context.Users.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 if (userModel == null) return NotFound();
                 return View(userModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Details de User {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar el detalle.");
                 return RedirectToAction(nameof(Index));
             }
@@ -179,8 +183,9 @@ namespace PracticaPedidos4MVC.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creando User.");
                 ModelState.AddModelError(string.Empty, "No se pudo crear el usuario. Intenta nuevamente.");
                 return View(userModel);
             }
@@ -190,15 +195,16 @@ namespace PracticaPedidos4MVC.Controllers
         {
             var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
                 var userModel = await _context.Users.FindAsync(id);
                 if (userModel == null) return NotFound();
                 return View(userModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Edit de User {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar el formulario de edición.");
                 return RedirectToAction(nameof(Index));
             }
@@ -227,14 +233,16 @@ namespace PracticaPedidos4MVC.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException exC)
             {
+                _logger.LogError(exC, "Concurrencia al editar User {Id}.", id);
                 if (!UserModelExists(userModel.Id)) return NotFound();
                 ModelState.AddModelError(string.Empty, "Otro usuario modificó este registro. Recarga la página.");
                 return View(userModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error general al editar User {Id}.", id);
                 ModelState.AddModelError(string.Empty, "No se pudieron guardar los cambios. Intenta nuevamente.");
                 return View(userModel);
             }
@@ -244,9 +252,10 @@ namespace PracticaPedidos4MVC.Controllers
         {
             var guard = ForbidToCatalogIfNotAdmin(); if (guard is not null) return guard;
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
+
                 var userModel = await _context.Users
                     .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == id);
@@ -258,8 +267,9 @@ namespace PracticaPedidos4MVC.Controllers
 
                 return View(userModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Delete de User {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar la eliminación.");
                 return RedirectToAction(nameof(Index));
             }
@@ -274,7 +284,6 @@ namespace PracticaPedidos4MVC.Controllers
             // Re-chequeo server: tampoco permitir en POST
             if (CurrentUserId().HasValue && CurrentUserId()!.Value == id)
             {
-                // Simplemente redirigimos al listado (podrías usar TempData para un mensaje si quieres)
                 return RedirectToAction(nameof(Index));
             }
 
@@ -288,8 +297,9 @@ namespace PracticaPedidos4MVC.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error eliminando User {Id}.", id);
                 ModelState.AddModelError(string.Empty, "No se pudo eliminar el usuario. Intenta nuevamente.");
                 var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
                 return user is null ? RedirectToAction(nameof(Index)) : View("Delete", user);
@@ -438,7 +448,10 @@ namespace PracticaPedidos4MVC.Controllers
                                         .Where(r => !string.IsNullOrWhiteSpace(r.Exchange?.Value));
                 return mx.Any();
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
 
         private static (int empieza, int indice, int diferenciaLongitud) CalcularRelevancia(string baseNorm, string terminoNorm)

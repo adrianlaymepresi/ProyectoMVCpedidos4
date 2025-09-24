@@ -37,9 +37,9 @@ EXTRA) Agregar precisión decimales + Codigo Program + Migración inicial
 25) Cambiar estado de pedido -> Pendiente, procesado, enviado, entregado
 
 --- SEGURIDAD ---
-26) Implementar autenticación -> Login / Logout con Identity o manual
-27) Implementar autorización -> Roles: admin / cliente / empleado
-28) Evitar acceso no autorizado -> Decoradores [Authorize] en controladores
+26) Implementar autenticación -> Login / Logout con Manual + evitar cada 3 intentos ataques de fuerza bruta que espere una x cantidad de tiempo
+27) Autorización manual por roles; menú dinámico; redirección post-login; Catálogo cliente; sin [Authorize]; [28 OMITIDO por doc. 23/09/2025]
+EXTRA) Seguridad: roles fijos admin/empleado/cliente (select en Create/Edit + validación servidor); bloqueo de auto-eliminación del admin logueado (vista + POST); nueva migración a BD correcta.
 
 --- VALIDACIONES FUERTES ---
 29) Manejar errores en controlador -> Try/catch y mensajes amigables

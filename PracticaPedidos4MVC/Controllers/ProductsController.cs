@@ -15,10 +15,12 @@ namespace PracticaPedidos4MVC.Controllers
     public class ProductsController : Controller
     {
         private readonly PedidosDBContext _context;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(PedidosDBContext context)
+        public ProductsController(PedidosDBContext context, ILogger<ProductsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // ===== Helpers de rol =====
@@ -183,8 +185,9 @@ namespace PracticaPedidos4MVC.Controllers
 
                 return View(items);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar listado de Products.");
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar los productos.");
                 ViewBag.PaginaActual = 1;
                 ViewBag.CantidadRegistrosPorPagina = 5;
@@ -203,18 +206,18 @@ namespace PracticaPedidos4MVC.Controllers
 
         public async Task<IActionResult> Details(int? id)
         {
-            // Si un cliente intenta entrar aquí, lo mandamos al catálogo.
             if (!IsAdminOrEmpleado()) return RedirectToAction("Index", "Catalog");
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
                 var productModel = await _context.Products.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 if (productModel == null) return NotFound();
                 return View(productModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Details de Product {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar el detalle.");
                 return RedirectToAction(nameof(Index));
             }
@@ -247,8 +250,9 @@ namespace PracticaPedidos4MVC.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error creando Product.");
                 ModelState.AddModelError(string.Empty, "No se pudo guardar el producto. Intenta nuevamente.");
                 return View(productModel);
             }
@@ -258,15 +262,16 @@ namespace PracticaPedidos4MVC.Controllers
         {
             var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
                 var productModel = await _context.Products.FindAsync(id);
                 if (productModel == null) return NotFound();
                 return View(productModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Edit de Product {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar el formulario de edición.");
                 return RedirectToAction(nameof(Index));
             }
@@ -295,14 +300,16 @@ namespace PracticaPedidos4MVC.Controllers
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException exC)
             {
+                _logger.LogError(exC, "Concurrencia al editar Product {Id}.", id);
                 if (!ProductModelExists(productModel.Id)) return NotFound();
                 ModelState.AddModelError(string.Empty, "Otro usuario modificó este registro. Recarga la página.");
                 return View(productModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error general al editar Product {Id}.", id);
                 ModelState.AddModelError(string.Empty, "No se pudieron guardar los cambios. Intenta nuevamente.");
                 return View(productModel);
             }
@@ -312,15 +319,16 @@ namespace PracticaPedidos4MVC.Controllers
         {
             var guard = ForbidToCatalogIfNotAdminOrEmpleado(); if (guard is not null) return guard;
 
-            if (id == null) return NotFound();
             try
             {
+                if (id == null) return NotFound();
                 var productModel = await _context.Products.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id);
                 if (productModel == null) return NotFound();
                 return View(productModel);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error al cargar Delete de Product {Id}.", id);
                 ModelState.AddModelError(string.Empty, "Ocurrió un error al cargar la eliminación.");
                 return RedirectToAction(nameof(Index));
             }
@@ -342,8 +350,9 @@ namespace PracticaPedidos4MVC.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error eliminando Product {Id}.", id);
                 ModelState.AddModelError(string.Empty, "No se pudo eliminar el producto. Intenta nuevamente.");
                 var prod = await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
                 return prod is null ? RedirectToAction(nameof(Index)) : View("Delete", prod);
@@ -352,7 +361,7 @@ namespace PracticaPedidos4MVC.Controllers
 
         private bool ProductModelExists(int id) => _context.Products.Any(e => e.Id == id);
 
-        // ===== Validaciones / utilitarios (como ya tenías) =====
+        // ===== Validaciones / utilitarios =====
         private void ValidarNombre(ProductModel p)
         {
             var nombre = (p.Nombre ?? "").Trim();

@@ -52,77 +52,96 @@ namespace PracticaPedidos4MVC.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(LoginViewModel vm)
         {
-            // ¿Bloqueado?
-            var blockTicks = HttpContext.Session.GetString(SK_BLOCK_UNTIL);
-            if (!string.IsNullOrEmpty(blockTicks))
+            try
             {
-                var blockUntil = new DateTimeOffset(long.Parse(blockTicks), TimeSpan.Zero);
-                if (DateTimeOffset.UtcNow < blockUntil)
+                // ¿Bloqueado?
+                var blockTicks = HttpContext.Session.GetString(SK_BLOCK_UNTIL);
+                if (!string.IsNullOrEmpty(blockTicks))
                 {
-                    ModelState.AddModelError(string.Empty, $"Demasiados intentos fallidos. Intenta después de las {blockUntil.LocalDateTime:T}.");
+                    var blockUntil = new DateTimeOffset(long.Parse(blockTicks), TimeSpan.Zero);
+                    if (DateTimeOffset.UtcNow < blockUntil)
+                    {
+                        ModelState.AddModelError(string.Empty, $"Demasiados intentos fallidos. Intenta después de las {blockUntil.LocalDateTime:T}.");
+                        return View(vm);
+                    }
+                    else
+                    {
+                        HttpContext.Session.Remove(SK_BLOCK_UNTIL);
+                        HttpContext.Session.Remove(SK_FAILED_COUNT);
+                    }
+                }
+
+                if (!ModelState.IsValid) return View(vm);
+
+                string email = (vm.Email ?? "").Trim();
+                string usuario = (vm.Nombre ?? "").Trim();
+                string password = (vm.Password ?? "").Trim();
+
+                if (string.IsNullOrEmpty(email) && string.IsNullOrEmpty(usuario))
+                {
+                    ModelState.AddModelError(string.Empty, "Debes ingresar Email o Usuario.");
                     return View(vm);
                 }
-                else
+
+                // Buscar por email o usuario (comparación simple)
+                UserModel? user;
+                try
                 {
-                    HttpContext.Session.Remove(SK_BLOCK_UNTIL);
-                    HttpContext.Session.Remove(SK_FAILED_COUNT);
+                    user = await _context.Users
+                        .FirstOrDefaultAsync(u =>
+                            (!string.IsNullOrEmpty(email) && u.Email == email) ||
+                            (!string.IsNullOrEmpty(usuario) && u.Nombre == usuario));
                 }
+                catch (Exception exLookup)
+                {
+                    _logger.LogError(exLookup, "Error consultando el usuario durante el login.");
+                    ModelState.AddModelError(string.Empty, "No se pudo validar las credenciales. Intenta nuevamente.");
+                    return View(vm);
+                }
+
+                if (user == null || (user.Password ?? "") != password)
+                {
+                    int fails = HttpContext.Session.GetInt32(SK_FAILED_COUNT) ?? 0;
+                    fails++;
+                    HttpContext.Session.SetInt32(SK_FAILED_COUNT, fails);
+
+                    if (fails >= 3)
+                    {
+                        var until = DateTimeOffset.UtcNow.Add(BlockWindow);
+                        HttpContext.Session.SetString(SK_BLOCK_UNTIL, until.UtcTicks.ToString());
+                        ModelState.AddModelError(string.Empty, $"Cuenta bloqueada por {BlockWindow.TotalMinutes:0} minutos por intentos fallidos.");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, "Credenciales inválidas.");
+                    }
+                    return View(vm);
+                }
+
+                // Éxito → guardar sesión mínima
+                HttpContext.Session.SetInt32(SK_USER_ID, user.Id);
+                HttpContext.Session.SetString(SK_USER_NAME, user.Nombre ?? user.Email ?? "Usuario");
+                HttpContext.Session.SetString(SK_USER_ROLE, user.Rol ?? "cliente");
+
+                // limpiar contadores
+                HttpContext.Session.Remove(SK_FAILED_COUNT);
+                HttpContext.Session.Remove(SK_BLOCK_UNTIL);
+
+                // Redirección según rol
+                var role = (user.Rol ?? "cliente").ToLowerInvariant();
+                return role switch
+                {
+                    "admin" => RedirectToAction("Index", "Users"),
+                    "empleado" => RedirectToAction("Index", "Orders"),
+                    _ => RedirectToAction("Index", "Catalog")
+                };
             }
-
-            if (!ModelState.IsValid) return View(vm);
-
-            string email = (vm.Email ?? "").Trim();
-            string usuario = (vm.Nombre ?? "").Trim();
-            string password = (vm.Password ?? "").Trim();
-
-            if (string.IsNullOrEmpty(email) && string.IsNullOrEmpty(usuario))
+            catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, "Debes ingresar Email o Usuario.");
+                _logger.LogError(ex, "Error general en POST /Home/Index (login).");
+                ModelState.AddModelError(string.Empty, "Ocurrió un error al iniciar sesión. Intenta nuevamente.");
                 return View(vm);
             }
-
-            // Buscar por email o usuario (comparación simple)
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u =>
-                    (!string.IsNullOrEmpty(email) && u.Email == email) ||
-                    (!string.IsNullOrEmpty(usuario) && u.Nombre == usuario));
-
-            if (user == null || (user.Password ?? "") != password)
-            {
-                int fails = HttpContext.Session.GetInt32(SK_FAILED_COUNT) ?? 0;
-                fails++;
-                HttpContext.Session.SetInt32(SK_FAILED_COUNT, fails);
-
-                if (fails >= 3)
-                {
-                    var until = DateTimeOffset.UtcNow.Add(BlockWindow);
-                    HttpContext.Session.SetString(SK_BLOCK_UNTIL, until.UtcTicks.ToString());
-                    ModelState.AddModelError(string.Empty, $"Cuenta bloqueada por {BlockWindow.TotalMinutes:0} minutos por intentos fallidos.");
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Credenciales inválidas.");
-                }
-                return View(vm);
-            }
-
-            // Éxito → guardar sesión mínima
-            HttpContext.Session.SetInt32(SK_USER_ID, user.Id);
-            HttpContext.Session.SetString(SK_USER_NAME, user.Nombre ?? user.Email ?? "Usuario");
-            HttpContext.Session.SetString(SK_USER_ROLE, user.Rol ?? "cliente");
-
-            // limpiar contadores
-            HttpContext.Session.Remove(SK_FAILED_COUNT);
-            HttpContext.Session.Remove(SK_BLOCK_UNTIL);
-
-            // Redirección según rol
-            var role = (user.Rol ?? "cliente").ToLowerInvariant();
-            return role switch
-            {
-                "admin" => RedirectToAction("Index", "Users"),
-                "empleado" => RedirectToAction("Index", "Orders"),
-                _ => RedirectToAction("Index", "Catalog")
-            };
         }
 
         // POST: logout (con confirmación desde el layout)
@@ -130,7 +149,14 @@ namespace PracticaPedidos4MVC.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Logout()
         {
-            HttpContext.Session.Clear();
+            try
+            {
+                HttpContext.Session.Clear();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al cerrar sesión.");
+            }
             return RedirectToAction(nameof(Index));
         }
 
