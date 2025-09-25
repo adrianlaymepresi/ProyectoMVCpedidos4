@@ -44,3 +44,4 @@ EXTRA) Seguridad: roles fijos admin/empleado/cliente (select en Create/Edit + va
 --- VALIDACIONES FUERTES ---
 29) Manejar errores en controlador -> Try/catch y mensajes amigables
 30) Sanitizar entradas (anti-SQLi): CRUD con LINQ/EF parametrizado; y hardening del buscador público de Catálogo (longitud máx + bloqueo de firmas SQL).
+EXTRA) Agregar un README.md para que se sepa las credenciales de uso para ingresar al sistema con los 3 roles definidos. Respaldo BD PedidosDB.bak en /Data (para restauración rápida).
